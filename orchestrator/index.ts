@@ -30,6 +30,7 @@ import { runWorkflow } from '../services/workflow';
 import { runModelCouncil } from '../services/model-council';
 import { runEnsemble } from '../services/ensemble';
 import { isMockEnabled } from '../services/ai-mock';
+import { applyPatches } from '../services/apply-patches';
 
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const queueKey = process.env.QUEUE_KEY || 'tasks:pending';
@@ -215,6 +216,33 @@ app.get('/council', async (req, reply) => {
   } catch (e: any) {
     reply.code(500);
     return { error: e.message };
+  }
+});
+
+// Auto council: run council and immediately apply any patches (allowlist protected)
+// POST /auto-council { prompt, commit? }  (commit not yet implemented)
+app.post('/auto-council', async (req, reply) => {
+  const body = req.body as any;
+  if (!body?.prompt) { reply.code(400); return { error: 'missing prompt' }; }
+  try {
+    const council = await runModelCouncil({ userPrompt: body.prompt });
+    const applied = applyPatches(council.proposedPatches);
+    return { council, applied };
+  } catch (e: any) {
+    reply.code(500); return { error: e.message };
+  }
+});
+
+app.get('/auto-council', async (req, reply) => {
+  const q: any = req.query || {};
+  const prompt = q.prompt;
+  if (!prompt) return { usage: 'Provide ?prompt=...  (POST /auto-council {"prompt":"..."} applies patches)' };
+  try {
+    const council = await runModelCouncil({ userPrompt: prompt });
+    const applied = applyPatches(council.proposedPatches);
+    return { council, applied };
+  } catch (e: any) {
+    reply.code(500); return { error: e.message };
   }
 });
 
