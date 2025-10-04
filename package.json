@@ -24,6 +24,8 @@
     "ci": "npm run validate:taxonomy && npm run typecheck && npm run lint && npm run test && npm run build",
     "dev:orchestrator": "tsx orchestrator/index.ts",
     "dev:orchestrator:mem": "cross-env ORCH_ALLOW_NO_REDIS=1 tsx orchestrator/index.ts",
+    "dev:sse:smoke": "tsx scripts/sse-smoke.ts",
+    "usage:check": "curl -s http://localhost:4000/ai-usage/summary || exit 0",
     "memory:smoke": "tsx scripts/memory-smoke.ts",
     "dev:worker:local": "tsx workers/local/worker.ts",
     "queue:demo": "tsx orchestrator/demo-enqueue.ts",
@@ -35,6 +37,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
+    "@fastify/rate-limit": "^10.3.0",
     "@google/generative-ai": "^0.16.0",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.0",

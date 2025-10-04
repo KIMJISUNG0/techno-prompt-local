@@ -30,6 +30,8 @@ import { runWorkflow } from '../services/workflow';
 import { runModelCouncil } from '../services/model-council';
 import { runEnsemble } from '../services/ensemble';
 import { registerMemoryRoutes } from './memory-routes';
+import { registerDevCouncilRoutes } from './dev-council-routes';
+import { registerMetricsRoutes } from './metrics-routes';
 import { isMockEnabled } from '../services/ai-mock';
 import { applyPatches } from '../services/apply-patches';
 
@@ -60,6 +62,34 @@ const app: FastifyInstance = Fastify({ logger: true });
 
 async function bootstrap() {
   await app.register(cors, { origin: '*', methods: ['GET','POST','OPTIONS'], credentials: false });
+  // Simple custom rate limiter (token bucket per ip+route) to avoid fastify v5 plugin requirement
+  const buckets: Record<string, { tokens: number; updated: number }> = {};
+  const LIMIT_DEFAULT = 60; // per minute
+  const LIMIT_HIGH = 120; // for /health and /dev-council/stream
+  function allow(ip: string, route: string) {
+    const key = ip + '|' + route;
+    const now = Date.now();
+    const cap = route === '/health' || route.startsWith('/dev-council/stream') ? LIMIT_HIGH : LIMIT_DEFAULT;
+    const refillRate = cap / 60000; // tokens per ms
+    if (!buckets[key]) buckets[key] = { tokens: cap, updated: now };
+    const b = buckets[key];
+    const delta = now - b.updated;
+    b.tokens = Math.min(cap, b.tokens + delta * refillRate);
+    b.updated = now;
+    if (b.tokens >= 1) {
+      b.tokens -= 1;
+      return true;
+    }
+    return false;
+  }
+  app.addHook('onRequest', (req, reply, done) => {
+    const ip = (req.ip || req.socket.remoteAddress || 'unknown').replace(/[^0-9a-fA-F:.]/g, '');
+    if (!allow(ip, req.routerPath || req.url)) {
+      reply.code(429).send({ error: 'rate_limited' });
+      return;
+    }
+    done();
+  });
 
 // (선택) Private Network Access 대응 헤더 — 일부 브라우저/환경에서 필요
 app.addHook('onSend', async (req, reply, payload) => {
@@ -73,6 +103,22 @@ app.addHook('onSend', async (req, reply, payload) => {
 
   // Memory system routes
   await registerMemoryRoutes(app);
+  await registerDevCouncilRoutes(app);
+  await registerMetricsRoutes(app);
+
+  // Simple per-request timing log
+  app.addHook('onRequest', (req, _reply, done) => {
+    (req as any)._start = process.hrtime.bigint();
+    done();
+  });
+  app.addHook('onResponse', (req, reply, done) => {
+    try {
+      const start = (req as any)._start as bigint | undefined;
+      const ms = start ? Number((process.hrtime.bigint() - start) / BigInt(1_000_000)) : 0;
+      app.log.info({ method: req.method, url: req.url, status: reply.statusCode, ms }, 'req');
+    } catch {}
+    done();
+  });
 
 app.get('/health', async () => ({ ok: true }));
 
