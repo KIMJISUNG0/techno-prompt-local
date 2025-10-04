@@ -4,6 +4,7 @@ import Redis from 'ioredis';
 import { normalizeTask, Task } from './task-schema';
 import 'node:crypto';
 import { runWorkflow } from '../services/workflow';
+import { runModelCouncil } from '../services/model-council';
 
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const queueKey = process.env.QUEUE_KEY || 'tasks:pending';
@@ -103,6 +104,22 @@ app.post('/workflow', async (req, reply) => {
     return result;
   } catch (e: any) {
     req.log.error({ err: e }, 'workflow failed');
+    reply.code(500);
+    return { error: e.message };
+  }
+});
+
+app.post('/council', async (req, reply) => {
+  const body = req.body as any;
+  if (!body?.prompt) {
+    reply.code(400);
+    return { error: 'missing prompt' };
+  }
+  try {
+    const result = await runModelCouncil({ userPrompt: body.prompt });
+    return result;
+  } catch (e: any) {
+    req.log.error({ err: e }, 'council failed');
     reply.code(500);
     return { error: e.message };
   }
