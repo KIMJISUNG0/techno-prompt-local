@@ -19,6 +19,25 @@
 	 - 화면 폭 < 1280 자동 활성화
 	 - 검색(query) 중에는 정보량 확보 위해 자동 비활성화
 
+## Free Mode (LLM API Key 없이 개발)
+OpenAI / Gemini 유료 키 없이 오케스트레이터 / Council / Workflow 를 돌리고 싶으면 `.env` 에 다음을 넣고 재시작:
+
+```
+ALLOW_MOCK_AI=1
+```
+
+동작 방식:
+- 실제 키가 없을 때 `services/workflow.ts`, `services/model-council.ts` 가 실패 대신 결정적(mock) 텍스트/patch 블록 생성
+- Patch 추출/파이프라인/프론트엔드 연동을 비용 없이 개발 가능
+- 모의 패치 예: `src/mock/free-mode-example.ts` 생성 제안
+
+주의:
+- 품질/논리 정확도 보장 안 됨 (테스트/UX 검증용)
+- 실서비스 배포 시 이 변수를 제거하거나 0 으로 설정
+- 진짜 모델 성능 차이 확인하려면 키 추가 후 ALLOW_MOCK_AI 제거
+
+관련 환경변수(모델 교체): `WORKFLOW_GPT_MODEL`, `WORKFLOW_GEMINI_MODEL`, `COUNCIL_*_MODEL`
+
 ## 실행 방법
 
 ### 1. 의존성 설치

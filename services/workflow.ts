@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { isMockEnabled, mockChat } from './ai-mock.js';
 
 type ModelOverrides = { gptModel?: string; geminiModel?: string };
 
@@ -62,10 +63,14 @@ export async function runWorkflow(
 
   const openai = hasEnv('OPENAI_API_KEY') ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
   const genAI = hasEnv('GEMINI_API_KEY') ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY!) : null;
+  const mock = !openai || !genAI ? isMockEnabled() : false;
 
   // Parallel phase: Gemini requirements + GPT initial draft
   const [geminiRes, gptRes] = await Promise.all([
     (async () => {
+      if (mock && !genAI) {
+        return { ok: true, content: mockChat({ model: 'gemini-mock', role: 'requirements', prompt: userPrompt, format: 'json' }) };
+      }
       if (!genAI) return { ok: false, content: '', error: 'GEMINI_API_KEY missing' as string };
       const model = genAI.getGenerativeModel({ model: geminiModel });
       try {
@@ -84,6 +89,9 @@ export async function runWorkflow(
       }
     })(),
     (async () => {
+      if (mock && !openai) {
+        return { ok: true, content: mockChat({ model: 'gpt-mock', role: 'draft', prompt: userPrompt, format: 'markdown' }) };
+      }
       if (!openai) return { ok: false, content: '', error: 'OPENAI_API_KEY missing' as string };
       try {
   const resp: any = await withTimeout(
@@ -118,7 +126,11 @@ export async function runWorkflow(
   // Merge phase
   let merged = { ok: false, content: '', error: '' };
   if (!openai) {
-    merged = { ok: false, content: '', error: 'OPENAI_API_KEY missing' };
+    if (mock) {
+      merged = { ok: true, content: mockChat({ model: 'gpt-mock', role: 'merge', prompt: userPrompt, format: 'markdown' }), error: '' };
+    } else {
+      merged = { ok: false, content: '', error: 'OPENAI_API_KEY missing' };
+    }
   } else {
     try {
   const mergeResp: any = await withTimeout(

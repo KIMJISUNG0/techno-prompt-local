@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { isMockEnabled, mockChat } from './ai-mock.js';
 
 /*
  Model Council Orchestrator ("multi-agent meeting")
@@ -59,6 +60,7 @@ function has(k: string) { return !!env(k) && env(k)!.trim() !== ''; }
 
 const openai = has('OPENAI_API_KEY') ? new OpenAI({ apiKey: env('OPENAI_API_KEY') }) : null;
 const genAI = has('GEMINI_API_KEY') ? new GoogleGenerativeAI(env('GEMINI_API_KEY')!) : null;
+const mockMode = (!openai || !genAI) && isMockEnabled();
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   let t: NodeJS.Timeout;
@@ -91,8 +93,8 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
   if (!opts.userPrompt || opts.userPrompt.trim().length < 3) {
     return { originalPrompt: opts.userPrompt, timeline: [], proposedPatches: [], summaryMarkdown: '**Error: prompt too short**', warnings: ['prompt too short'] };
   }
-  if (!openai) warnings.push('OPENAI_API_KEY missing (GPT steps will fail)');
-  if (!genAI) warnings.push('GEMINI_API_KEY missing (Gemini steps will fail)');
+  if (!openai) warnings.push(mockMode ? 'OPENAI_API_KEY missing -> mock fallback' : 'OPENAI_API_KEY missing (GPT steps will fail)');
+  if (!genAI) warnings.push(mockMode ? 'GEMINI_API_KEY missing -> mock fallback' : 'GEMINI_API_KEY missing (Gemini steps will fail)');
 
   const timeoutMs = opts.timeoutMs ?? 60_000;
   const retries = opts.maxRetries ?? 1;
@@ -121,6 +123,7 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
 
   // 1 Requirements (Gemini)
   const requirements = await record('requirements', mReq, async () => {
+    if (mockMode && !genAI) return mockChat({ model: 'gemini-mock', role: 'requirements', prompt: opts.userPrompt, format: 'json' });
     if (!genAI) throw new Error('gemini unavailable');
     const model = genAI.getGenerativeModel({ model: mReq });
     const resp: any = await model.generateContent(`요구사항을 JSON 스키마 스타일 + assumptions 필드로 요약:\n${opts.userPrompt}`);
@@ -129,6 +132,7 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
 
   // 2 Architecture (GPT)
   const architecture = await record('architecture', mArch, async () => {
+    if (mockMode && !openai) return mockChat({ model: 'gpt-mock', role: 'architecture', prompt: opts.userPrompt, format: 'markdown' });
     if (!openai) throw new Error('openai unavailable');
     const r = await openai.chat.completions.create({
       model: mArch,
@@ -143,6 +147,7 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
 
   // 3 Implementation Draft (GPT)
   const draft = await record('implementation-draft', mImpl, async () => {
+    if (mockMode && !openai) return mockChat({ model: 'gpt-mock', role: 'draft', prompt: architecture, format: 'patches' });
     if (!openai) throw new Error('openai unavailable');
     const r = await openai.chat.completions.create({
       model: mImpl,
@@ -157,6 +162,7 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
 
   // 4 Review (Gemini)
   const review = await record('review', mReview, async () => {
+    if (mockMode && !genAI) return mockChat({ model: 'gemini-mock', role: 'review', prompt: draft, format: 'markdown' });
     if (!genAI) throw new Error('gemini unavailable');
     const model = genAI.getGenerativeModel({ model: mReview });
     const resp: any = await model.generateContent(`코드 패치 초안에 대해 위험/누락/개선 TOP10 목록 제공:\n${draft}`);
@@ -165,6 +171,7 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
 
   // 5 Refine (GPT)
   const refined = await record('refine', mRefine, async () => {
+    if (mockMode && !openai) return mockChat({ model: 'gpt-mock', role: 'refine', prompt: draft + review, format: 'patches' });
     if (!openai) throw new Error('openai unavailable');
     const r = await openai.chat.completions.create({
       model: mRefine,
