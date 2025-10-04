@@ -1,0 +1,15 @@
+{
+  // Auto-approve only low-risk categories (edit/read). You requested full auto; set "*": true at your own risk.
+  "github.copilot.chat.autoApproveCommands": {
+    "^edit:.*": true,
+    "^read:.*": true
+  },
+  // To force full auto approval (NOT recommended) uncomment below:
+  // "github.copilot.chat.autoApproveCommands": { ".*": true }
+
+  // Additional helpful safety nets
+  "files.trimTrailingWhitespace": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  }
+}

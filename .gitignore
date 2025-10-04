@@ -12,6 +12,7 @@ yarn-error.log*
 
 # Editor
 .vscode/
+!.vscode/settings.json
 .idea/
 .DS_Store
 
