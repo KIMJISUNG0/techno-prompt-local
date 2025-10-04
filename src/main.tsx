@@ -58,6 +58,10 @@ function RootChooser() {
   if (hash.includes('expert')) return <QuickComposer />; // expert (instrument/structure oriented)
   if (hash.includes('abstract')) return <ProgressiveComposer />; // abstract token-based path
   if (hash.includes('unified')) return <UnifiedComposer />; // new unified composer scaffold
+  if (hash.includes('funk-natural')) {
+    const FunkNaturalPage = React.lazy(()=> import('./components/FunkNaturalPage'));
+    return <FunkNaturalPage />;
+  }
   if (hash.includes('quick')) return <QuickComposer />; // backward compat alias
   // Simple mode removed
   // Treat #composer as alias of #wizard (no difference in component for now)
@@ -80,6 +84,7 @@ function AppShell() {
   <a href="#expert" className="btn">Expert</a>
   <a href="#abstract" className="btn">Abstract</a>
   <a href="#unified" className="btn">Unified</a>
+  <a href="#funk-natural" className="btn">Funk Natural</a>
   <a href="#composer" className="btn">Composer</a>
   <a href="#live-test" className="btn">Live Test</a>
     </div>
