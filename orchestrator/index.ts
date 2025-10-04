@@ -344,7 +344,7 @@ app.get('/self-test', async () => {
   return { server: { ok: true }, aiStatus, tests };
 });
 
-  const port = Number(process.env.PORT || 4000);
+  const port = Number(process.env.PORT) || Number(process.env.ORCH_PORT) || 4000;
   app
     .listen({ port, host: '0.0.0.0' })
     .then(() => app.log.info(`Orchestrator listening on :${port}`))
