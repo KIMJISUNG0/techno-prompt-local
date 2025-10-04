@@ -3,7 +3,7 @@
 # Docs: https://render.com/docs/static-sites
 
 services:
-  - type: static_site
+  - type: static site
     name: techno-prompt
     env: static
     buildCommand: bash ./render-build.sh
