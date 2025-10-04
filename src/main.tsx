@@ -9,6 +9,7 @@ import './live/techno140Demo'; // registers techno140 patch
 const QuickComposer = React.lazy(()=> import('./components/QuickComposer'));
 const ProgressiveComposer = React.lazy(()=> import('./components/ProgressiveComposer'));
 const UnifiedComposer = React.lazy(()=> import('./components/unified/UnifiedComposer'));
+const FunkNaturalPage = React.lazy(()=> import('./components/FunkNaturalPage'));
 // SimpleComposer removed (deprecated simple mode)
 
 // Pre-parse hash for shareable genre selection (#g=genre1+genre2)
@@ -58,10 +59,7 @@ function RootChooser() {
   if (hash.includes('expert')) return <QuickComposer />; // expert (instrument/structure oriented)
   if (hash.includes('abstract')) return <ProgressiveComposer />; // abstract token-based path
   if (hash.includes('unified')) return <UnifiedComposer />; // new unified composer scaffold
-  if (hash.includes('funk-natural')) {
-    const FunkNaturalPage = React.lazy(()=> import('./components/FunkNaturalPage'));
-    return <FunkNaturalPage />;
-  }
+  if (hash.includes('funk-natural')) return <FunkNaturalPage />; // funk natural prompt page
   if (hash.includes('quick')) return <QuickComposer />; // backward compat alias
   // Simple mode removed
   // Treat #composer as alias of #wizard (no difference in component for now)
@@ -96,12 +94,36 @@ function AppShell() {
         </div>
       </nav>
       <div className="flex-1">
-        <React.Suspense fallback={<div className="p-6 text-xs text-slate-500">Loading module…</div>}>
-          <RootChooser />
-        </React.Suspense>
+        <ErrorBoundary>
+          <React.Suspense fallback={<div className="p-6 text-xs text-slate-500">Loading module… (느리면 새로고침 Ctrl+Shift+R)</div>}>
+            <RootChooser />
+          </React.Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   );
+}
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; err?: any }> {
+  constructor(props:any){
+    super(props); this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(err: any){
+    return { hasError: true, err };
+  }
+  componentDidCatch(err:any, info:any){
+    // eslint-disable-next-line no-console
+    console.error('[ErrorBoundary]', err, info);
+  }
+  render(){
+    if (this.state.hasError){
+      return <div className="p-6 text-xs text-red-400 space-y-2">로딩 중 오류가 발생했습니다.
+        <div className="text-slate-400">{String(this.state.err?.message || this.state.err)}</div>
+        <button className="btn" onClick={()=> window.location.reload()}>새로고침</button>
+      </div>;
+    }
+    return this.props.children as any;
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
