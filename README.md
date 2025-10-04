@@ -38,6 +38,24 @@ ALLOW_MOCK_AI=1
 
 관련 환경변수(모델 교체): `WORKFLOW_GPT_MODEL`, `WORKFLOW_GEMINI_MODEL`, `COUNCIL_*_MODEL`
 
+### Ensemble Endpoint (빠른 병렬 창의 집약)
+`POST /ensemble`
+Body 예시:
+```json
+{ "prompt": "장르 세분화: dark hypnotic techno 와 raw industrial techno 차이 정교화", "creativeVariants": 4 }
+```
+내부 수행:
+- Workflow(병렬 Gemini+GPT)
+- Model Council(다단계 요구/설계/패치/리뷰/리파인)
+- 고온도(temperature 높음) 창의 변형 N개 생성
+- Converge 단계에서 모두 종합 Markdown 산출
+
+추가 ENV:
+- ENSEMBLE_CREATIVE_MODEL (기본: gpt-4.1-mini → 없으면 gemini-1.5-flash → mock)
+- ENSEMBLE_CONVERGE_MODEL (기본: gpt-4.1 → 없으면 gemini-1.5-pro → mock)
+- ENSEMBLE_CACHE=1 (Redis 있으면 Redis + 메모리, 없으면 메모리)
+- ENSEMBLE_CACHE_TTL=600 (초)
+
 ## 실행 방법
 
 ### 1. 의존성 설치

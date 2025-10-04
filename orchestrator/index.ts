@@ -5,6 +5,7 @@ import { normalizeTask, Task } from './task-schema';
 import 'node:crypto';
 import { runWorkflow } from '../services/workflow';
 import { runModelCouncil } from '../services/model-council';
+import { runEnsemble } from '../services/ensemble';
 
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const queueKey = process.env.QUEUE_KEY || 'tasks:pending';
@@ -120,6 +121,27 @@ app.post('/council', async (req, reply) => {
     return result;
   } catch (e: any) {
     req.log.error({ err: e }, 'council failed');
+    reply.code(500);
+    return { error: e.message };
+  }
+});
+
+app.post('/ensemble', async (req, reply) => {
+  const body = req.body as any;
+  if (!body?.prompt) {
+    reply.code(400);
+    return { error: 'missing prompt' };
+  }
+  try {
+    const result = await runEnsemble({
+      prompt: body.prompt,
+      creativeVariants: body.creativeVariants,
+      highTemperature: body.highTemperature,
+      cache: body.cache
+    });
+    return result;
+  } catch (e: any) {
+    req.log.error({ err: e }, 'ensemble failed');
     reply.code(500);
     return { error: e.message };
   }
