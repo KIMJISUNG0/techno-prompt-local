@@ -1,4 +1,26 @@
-import 'dotenv/config';
+// Attempt to load environment variables.
+// 1) Try dotenv (if installed). 2) Fallback to manual .env parsing (no extra install needed).
+import fs from 'node:fs';
+import path from 'node:path';
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require('dotenv').config();
+} catch {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const raw = fs.readFileSync(envPath, 'utf8');
+      for (const line of raw.split(/\r?\n/)) {
+        if (!line || line.startsWith('#')) continue;
+        const eq = line.indexOf('=');
+        if (eq === -1) continue;
+        const k = line.slice(0, eq).trim();
+        const v = line.slice(eq + 1).trim();
+        if (!(k in process.env)) process.env[k] = v;
+      }
+    }
+  } catch {}
+}
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import Redis from 'ioredis';
