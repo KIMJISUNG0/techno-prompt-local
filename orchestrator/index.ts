@@ -36,15 +36,19 @@ const queueKey = process.env.QUEUE_KEY || 'tasks:pending';
 
 let redis: Redis | null = null;
 const allowNoRedis = process.env.ORCH_ALLOW_NO_REDIS === '1';
-try {
-  redis = new Redis(redisUrl);
-  redis.on('error', (e) => {
-    if (!allowNoRedis) {
-      app.log.error({ err: e }, 'Redis connection error');
-    }
-  });
-} catch (e) {
-  if (!allowNoRedis) throw e;
+// Only attempt Redis connection if we are NOT explicitly in memory-only mode.
+if (!allowNoRedis) {
+  try {
+    redis = new Redis(redisUrl);
+    redis.on('error', (e) => {
+      // In normal mode we surface errors; in memory mode we stay silent.
+      if (!allowNoRedis) {
+        app.log.error({ err: e }, 'Redis connection error');
+      }
+    });
+  } catch (e) {
+    if (!allowNoRedis) throw e; // rethrow only if not allowed to skip redis
+  }
 }
 
 // In-memory fallback queue (dev only)
@@ -54,6 +58,10 @@ const app: FastifyInstance = Fastify({ logger: true });
 
 async function bootstrap() {
   await app.register(cors, { origin: true });
+
+  if (allowNoRedis) {
+    app.log.info('ORCH_ALLOW_NO_REDIS=1 -> Using in-memory queue & cache (Redis disabled)');
+  }
 
 app.get('/health', async () => ({ ok: true }));
 
@@ -165,6 +173,21 @@ app.post('/workflow', async (req, reply) => {
   }
 });
 
+// Convenience GET (browser quick test): /workflow?prompt=...
+app.get('/workflow', async (req, reply) => {
+  const prompt = (req.query as any)?.prompt;
+  if (!prompt) {
+    return { usage: 'Provide ?prompt=...  (POST /workflow {"prompt":"..."} is canonical)' };
+  }
+  try {
+    const result = await runWorkflow(prompt as string);
+    return result;
+  } catch (e: any) {
+    reply.code(500);
+    return { error: e.message };
+  }
+});
+
 app.post('/council', async (req, reply) => {
   const body = req.body as any;
   if (!body?.prompt) {
@@ -176,6 +199,20 @@ app.post('/council', async (req, reply) => {
     return result;
   } catch (e: any) {
     req.log.error({ err: e }, 'council failed');
+    reply.code(500);
+    return { error: e.message };
+  }
+});
+
+app.get('/council', async (req, reply) => {
+  const prompt = (req.query as any)?.prompt;
+  if (!prompt) {
+    return { usage: 'Provide ?prompt=...  (POST /council {"prompt":"..."} is canonical)' };
+  }
+  try {
+    const result = await runModelCouncil({ userPrompt: prompt as string });
+    return result;
+  } catch (e: any) {
     reply.code(500);
     return { error: e.message };
   }
@@ -197,6 +234,26 @@ app.post('/ensemble', async (req, reply) => {
     return result;
   } catch (e: any) {
     req.log.error({ err: e }, 'ensemble failed');
+    reply.code(500);
+    return { error: e.message };
+  }
+});
+
+app.get('/ensemble', async (req, reply) => {
+  const q: any = req.query || {};
+  const prompt = q.prompt;
+  if (!prompt) {
+    return { usage: 'Provide ?prompt=...  (POST /ensemble {"prompt":"..."} allows variants/highTemperature)' };
+  }
+  try {
+    const result = await runEnsemble({
+      prompt: prompt as string,
+      creativeVariants: q.creativeVariants ? Number(q.creativeVariants) : undefined,
+      highTemperature: q.highTemperature ? Number(q.highTemperature) : undefined,
+      cache: q.cache === '1' ? true : q.cache === '0' ? false : undefined,
+    });
+    return result;
+  } catch (e: any) {
     reply.code(500);
     return { error: e.message };
   }

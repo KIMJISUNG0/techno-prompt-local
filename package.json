@@ -22,6 +22,7 @@
     "test:watch": "vitest",
     "ci": "npm run validate:taxonomy && npm run typecheck && npm run lint && npm run test && npm run build",
     "dev:orchestrator": "tsx orchestrator/index.ts",
+  "dev:orchestrator:mem": "cross-env ORCH_ALLOW_NO_REDIS=1 tsx orchestrator/index.ts",
     "dev:worker:local": "tsx workers/local/worker.ts",
     "queue:demo": "tsx orchestrator/demo-enqueue.ts",
     "dev:redis": "docker run --name redis-dev -p 6379:6379 -d redis:7-alpine || echo 'Redis already running'",
@@ -68,7 +69,8 @@
     "jsdom": "^24.0.0",
     "vitest": "^2.0.0",
     "@types/node": "^20.11.0",
-    "tsx": "^4.16.0"
+    "tsx": "^4.16.0",
+    "cross-env": "^7.0.3"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
