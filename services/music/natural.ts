@@ -57,7 +57,34 @@ function joinParts(parts:string[]){
   return parts.filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
 }
 
-export function buildFunkNaturalPrompt(input: FunkNLInput){
+export interface FunkNaturalResult {
+  text: string;
+  length: number;
+  debug?: {
+    originalInstrumentList: string[];
+    finalInstrumentList: string[];
+    removedSentences: string[];
+    truncated: boolean; // true if hard-cut at 200 chars
+    stages: { label: string; length: number }[];
+    diversity: number; // uniqueWords/totalWords (0~1)
+    originalLength: number; // 길이 압축 전 최초 길이
+    compressionRatio: number; // finalLength / originalLength (0~1)
+    warnings: string[]; // 품질 경고 (ex: low_diversity, truncated)
+  };
+}
+
+function diversityScore(text: string): number {
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return 0;
+  const uniq = new Set(words);
+  return +(uniq.size / words.length).toFixed(3);
+}
+
+export function buildFunkNaturalPrompt(input: FunkNLInput & { debug?: boolean }): FunkNaturalResult {
   const sub = (input.substyles ?? []).filter(Boolean).slice(0,2);
   const stylePrefix = sub.length
     ? `${sub.join(' and ')} `
@@ -87,21 +114,28 @@ export function buildFunkNaturalPrompt(input: FunkNLInput){
     if (seconds > 0) lengthSent = sentence(`Target length around ${toMinSec(seconds)}`);
   }
 
+  let removed: string[] = [];
+  const stages: { label: string; length: number }[] = [];
   let parts = [head, evolve, groove, fxSent, mixSent, lengthSent].filter(Boolean);
   let text = joinParts(parts);
+  stages.push({ label: 'initial', length: text.length });
+  const originalLength = text.length;
 
   // 200자 가드: 제거 우선순위 = 길이문구 → 믹스 → FX → 악기 중간 항목 → 마지막 문장
   if (text.length > 200 && lengthSent){
+    removed.push(lengthSent);
     parts = parts.filter(p => p !== lengthSent);
-    text = joinParts(parts);
+    text = joinParts(parts); stages.push({ label: 'drop-length', length: text.length });
   }
   if (text.length > 200 && mixSent){
+    removed.push(mixSent);
     parts = parts.filter(p => p !== mixSent);
-    text = joinParts(parts);
+    text = joinParts(parts); stages.push({ label: 'drop-mix', length: text.length });
   }
   if (text.length > 200 && fxSent){
+    removed.push(fxSent);
     parts = parts.filter(p => p !== fxSent);
-    text = joinParts(parts);
+    text = joinParts(parts); stages.push({ label: 'drop-fx', length: text.length });
   }
   // 악기 리스트 축소(가운데부터 제거)
   let inst = baseInstr.slice();
@@ -109,19 +143,41 @@ export function buildFunkNaturalPrompt(input: FunkNLInput){
     inst.splice(Math.floor(inst.length/2), 1);
     evolve = sentence(`One ${hookBars}-bar hook repeats ${repeats} times; instruments evolve: ${list(inst)}`);
     parts = [head, evolve, groove, fxSent, mixSent].filter(Boolean);
-    text = joinParts(parts);
+    text = joinParts(parts); stages.push({ label: 'shrink-instruments', length: text.length });
   }
   // 여전히 길면 뒤 문장부터 제거
   while (text.length > 200 && parts.length > 2){
-    parts.pop();
-    text = joinParts(parts);
+    const popped = parts.pop();
+    if (popped) removed.push(popped);
+    text = joinParts(parts); stages.push({ label: 'pop-tail', length: text.length });
   }
   // 최후의 보루: 단어 경계로 자르기
+  let truncated = false;
   if (text.length > 200){
     text = text.slice(0,200).replace(/\s+\S*$/,'').replace(/[;,]$/,'').trim();
     if (!/[.!?]$/.test(text)) text += '.';
+    truncated = true; stages.push({ label: 'hard-truncate', length: text.length });
   }
-  return { text, length: text.length };
+  const result: FunkNaturalResult = { text, length: text.length };
+  if (input.debug) {
+    const warnings: string[] = [];
+    if (truncated) warnings.push('truncated');
+    const diversity = diversityScore(text);
+    if (diversity < 0.75) warnings.push('low_diversity');
+    const compressionRatio = +(text.length / (originalLength || text.length)).toFixed(3);
+    result.debug = {
+      originalInstrumentList: baseInstr,
+      finalInstrumentList: inst,
+      removedSentences: removed,
+      truncated,
+      stages,
+      diversity,
+      originalLength,
+      compressionRatio,
+      warnings,
+    };
+  }
+  return result;
 }
 
 export function funkNaturalPresets(): string[] {

@@ -32,7 +32,8 @@ export function registerMusicNaturalRoutes(fastify: FastifyInstance){
 
   fastify.post('/music/prompt-natural', async (req, rep) => {
     const body = sanitizeBody(req.body);
-    const result = buildFunkNaturalPrompt(body);
+    const debugFlag = (req.query as any)?.debug === '1' || (req.body as any)?.debug === true;
+    const result = buildFunkNaturalPrompt({ ...body, debug: debugFlag });
     return result;
   });
 }
