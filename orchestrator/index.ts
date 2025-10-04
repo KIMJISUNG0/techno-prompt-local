@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import Redis from 'ioredis';
@@ -28,7 +29,9 @@ try {
 const memQueue: Task[] = [];
 const memResults: Record<string, any> = {};
 const app: FastifyInstance = Fastify({ logger: true });
-await app.register(cors, { origin: true });
+
+async function bootstrap() {
+  await app.register(cors, { origin: true });
 
 app.get('/health', async () => ({ ok: true }));
 
@@ -177,16 +180,19 @@ app.post('/ensemble', async (req, reply) => {
   }
 });
 
+  const port = Number(process.env.PORT || 4000);
+  app
+    .listen({ port, host: '0.0.0.0' })
+    .then(() => app.log.info(`Orchestrator listening on :${port}`))
+    .catch((e: unknown) => {
+      app.log.error({ err: e }, 'Failed to start orchestrator');
+      process.exit(1);
+    });
+}
+
 // Export a lightweight helper to allow worker memory fallback injection (dev only)
 export function __memRecordResult(id: string, data: any) {
   if (allowNoRedis) memResults[id] = data;
 }
 
-const port = Number(process.env.PORT || 4000);
-app
-  .listen({ port, host: '0.0.0.0' })
-  .then(() => app.log.info(`Orchestrator listening on :${port}`))
-  .catch((e: unknown) => {
-    app.log.error({ err: e }, 'Failed to start orchestrator');
-    process.exit(1);
-  });
+bootstrap();
