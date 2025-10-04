@@ -48,8 +48,16 @@ export async function runWorkflow(
     };
   }
 
-  const gptModel = opts?.modelOverrides?.gptModel ?? 'gpt-4.1';
-  const geminiModel = opts?.modelOverrides?.geminiModel ?? 'gemini-1.5-pro';
+  // Allow environment variable overrides so you can bump models without editing code.
+  // e.g. set WORKFLOW_GPT_MODEL=gpt-4.1-mini (or future newer name) in your .env
+  const gptModel =
+    opts?.modelOverrides?.gptModel ||
+    process.env.WORKFLOW_GPT_MODEL ||
+    'gpt-4.1';
+  const geminiModel =
+    opts?.modelOverrides?.geminiModel ||
+    process.env.WORKFLOW_GEMINI_MODEL ||
+    'gemini-1.5-pro';
   const temperature = opts?.temperature ?? 0.4;
 
   const openai = hasEnv('OPENAI_API_KEY') ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;

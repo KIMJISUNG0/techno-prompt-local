@@ -98,11 +98,12 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
   const retries = opts.maxRetries ?? 1;
 
   // Model selection with sensible fallbacks
-  const mReq = opts.geminiReqModel || 'gemini-1.5-flash';
-  const mReview = opts.geminiReviewModel || mReq;
-  const mArch = opts.gptArchitectModel || 'gpt-4.1-mini';
-  const mImpl = opts.gptImplementModel || 'gpt-4.1-mini';
-  const mRefine = opts.gptRefineModel || 'gpt-4.1';
+  // Environment override layer lets you update to newer model labels without code edits
+  const mReq = opts.geminiReqModel || process.env.COUNCIL_REQ_MODEL || 'gemini-1.5-flash';
+  const mReview = opts.geminiReviewModel || process.env.COUNCIL_REVIEW_MODEL || process.env.COUNCIL_REQ_MODEL || mReq;
+  const mArch = opts.gptArchitectModel || process.env.COUNCIL_ARCH_MODEL || 'gpt-4.1-mini';
+  const mImpl = opts.gptImplementModel || process.env.COUNCIL_IMPL_MODEL || 'gpt-4.1-mini';
+  const mRefine = opts.gptRefineModel || process.env.COUNCIL_REFINE_MODEL || 'gpt-4.1';
 
   const timeline: CouncilStepRecord[] = [];
   const record = async (role: string, model: string, fn: () => Promise<string>): Promise<string> => {
