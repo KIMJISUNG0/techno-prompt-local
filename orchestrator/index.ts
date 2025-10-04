@@ -44,11 +44,18 @@ const allowNoRedis = process.env.ORCH_ALLOW_NO_REDIS === '1';
 // Only attempt Redis connection if we are NOT explicitly in memory-only mode.
 if (!allowNoRedis) {
   try {
-    redis = new Redis(redisUrl);
+    // Limit retry noise: after 3 failed attempts stop retrying (ioredis default would keep going)
+    const retryStrategy = (times: number) => {
+      if (times > 3) return null; // stop
+      return Math.min(200 * times, 1000);
+    };
+    redis = new Redis(redisUrl, { retryStrategy });
+    let redisErrorLogged = false;
     redis.on('error', (e) => {
-      // In normal mode we surface errors; in memory mode we stay silent.
-      if (!allowNoRedis) {
-        app.log.error({ err: e }, 'Redis connection error');
+      if (!allowNoRedis && !redisErrorLogged) {
+        redisErrorLogged = true;
+        // Downgrade to warn for cleaner logs if running without external Redis provisioned
+        app.log.warn({ err: e }, 'Redis connection error (logging once; continuing in memory)');
       }
     });
   } catch (e) {
@@ -123,6 +130,13 @@ app.addHook('onSend', async (req, reply, payload) => {
   });
 
 app.get('/health', async () => ({ ok: true }));
+// Simple root route to avoid 404 confusion on GET /
+app.get('/', async () => ({
+  ok: true,
+  service: 'orchestrator',
+  memoryMode: allowNoRedis || !redis ? 'in-memory' : 'redis',
+  tips: 'Use /health, /music/presets-natural, /music/prompt-natural'
+}));
 
 app.get('/ai-status', async () => {
   const openaiKey = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== '';
