@@ -1,37 +1,25 @@
-# Render deployment configuration
-# This file defines a static site for the Vite build output.
-# Docs: https://render.com/docs/static-sites
-
+# Render Blueprint Configuration
 services:
-  - type: static
+  # Frontend Static Site Service
+  - type: static_site
     name: techno-prompt
-    env: static
     buildCommand: bash ./render-build.sh
-    publishPath: dist
+    publishPath: ./dist
     pullRequestPreviewsEnabled: true
-    # Node 버전 명시 (Render static site 빌드 환경)
-    envVars:
-      - key: NODE_VERSION
-        value: 18
-    # SPA 라우팅을 위한 모든 경로 → index.html 리라이트
+    # SPA rewrite rule to handle client-side routing
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
-  - type: web
-    name: orchestrator
-    env: node
-    buildCommand: npm install && npm run build:orchestrator
-    startCommand: npm run start:orchestrator
-    envVars:
-      - key: ORCH_ALLOW_NO_REDIS
-        value: 1
-  - type: web
-    name: orchestrator
-    env: node
-    buildCommand: npm install && npm run build:orchestrator
-    startCommand: npm run start:orchestrator
-    envVars:
-      - key: ORCH_ALLOW_NO_REDIS
-        value: 1
 
+  # Backend Web Service
+  - type: web
+    name: orchestrator
+    env: node
+    buildCommand: npm install && npm run build:orchestrator
+    startCommand: npm run start:orchestrator
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: ORCH_ALLOW_NO_REDIS
+        value: 1
