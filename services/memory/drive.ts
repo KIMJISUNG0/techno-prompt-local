@@ -14,9 +14,14 @@ function getAuth() {
   if (base64) creds = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
   else if (file) creds = require(path.resolve(file));
   else throw new Error('No service account cred');
-  const jwt = new google.auth.JWT(creds.client_email, undefined, creds.private_key, [
-    'https://www.googleapis.com/auth/drive.file',
-  ]);
+  // googleapis (google-auth-library) newer versions expect an options object rather than positional args.
+  // Use object form for forward compatibility; also normalize escaped newlines in private key.
+  const privateKey: string = (creds.private_key || '').replace(/\\n/g, '\n');
+  const jwt = new google.auth.JWT({
+    email: creds.client_email,
+    key: privateKey,
+    scopes: ['https://www.googleapis.com/auth/drive.file'],
+  });
   return jwt;
 }
 

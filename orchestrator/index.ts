@@ -32,6 +32,7 @@ import { runEnsemble } from '../services/ensemble';
 import { registerMemoryRoutes } from './memory-routes';
 import { registerDevCouncilRoutes } from './dev-council-routes';
 import { registerMetricsRoutes } from './metrics-routes';
+import { registerMusicNaturalRoutes } from '../services/music/routes-natural';
 import { isMockEnabled } from '../services/ai-mock';
 import { applyPatches } from '../services/apply-patches';
 
@@ -105,6 +106,7 @@ app.addHook('onSend', async (req, reply, payload) => {
   await registerMemoryRoutes(app);
   await registerDevCouncilRoutes(app);
   await registerMetricsRoutes(app);
+  registerMusicNaturalRoutes(app);
 
   // Simple per-request timing log
   app.addHook('onRequest', (req, _reply, done) => {
