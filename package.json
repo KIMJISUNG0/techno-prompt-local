@@ -26,6 +26,8 @@
     "dev:orchestrator:mem": "cross-env ORCH_ALLOW_NO_REDIS=1 tsx orchestrator/index.ts",
     "dev:sse:smoke": "tsx scripts/sse-smoke.ts",
     "usage:check": "curl -s http://localhost:4000/ai-usage/summary || exit 0",
+  "remote:smoke:ps": "powershell -ExecutionPolicy Bypass -File scripts/remote-smoke.ps1",
+  "remote:smoke": "tsx scripts/remote-smoke.ts",
     "memory:smoke": "tsx scripts/memory-smoke.ts",
     "dev:worker:local": "tsx workers/local/worker.ts",
     "queue:demo": "tsx orchestrator/demo-enqueue.ts",

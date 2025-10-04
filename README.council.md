@@ -32,9 +32,24 @@ Global default: 60 req/min/IP. Elevated (120/min) for /health and /dev-council/s
 npm run dev:orchestrator:mem
 npm run dev:sse:smoke
 npm run usage:check
+npm run remote:smoke   # ORCH env var required (non-stream)
+pwsh scripts/remote-smoke.ps1 -Orch $env:ORCH  # PowerShell full smoke
 ```
 
 ## Next
 - Persist metrics to memory layer or external store
 - Advanced scoring (complexity cost)
 - Streaming partial plan diffs
+- Optional: GitHub issue / PR automation, Knowledge Card auto-generation
+
+## Remote Smoke (Render)
+Set environment variable with your deployed orchestrator:
+```
+export ORCH=https://<your>.onrender.com
+npm run remote:smoke
+```
+Or PowerShell:
+```
+$env:ORCH="https://<your>.onrender.com"
+powershell -ExecutionPolicy Bypass -File scripts/remote-smoke.ps1
+```
