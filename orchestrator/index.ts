@@ -6,6 +6,7 @@ import 'node:crypto';
 import { runWorkflow } from '../services/workflow';
 import { runModelCouncil } from '../services/model-council';
 import { runEnsemble } from '../services/ensemble';
+import { isMockEnabled } from '../services/ai-mock';
 
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const queueKey = process.env.QUEUE_KEY || 'tasks:pending';
@@ -30,6 +31,35 @@ const app: FastifyInstance = Fastify({ logger: true });
 await app.register(cors, { origin: true });
 
 app.get('/health', async () => ({ ok: true }));
+
+app.get('/ai-status', async () => {
+  const openaiKey = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== '';
+  const geminiKey = !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() !== '';
+  const mock = isMockEnabled();
+  return {
+    openai: {
+      hasKey: openaiKey,
+      workflowModel: process.env.WORKFLOW_GPT_MODEL || 'gpt-4.1',
+      council: {
+        architect: process.env.COUNCIL_ARCH_MODEL || 'gpt-4.1-mini',
+        implement: process.env.COUNCIL_IMPL_MODEL || 'gpt-4.1-mini',
+        refine: process.env.COUNCIL_REFINE_MODEL || 'gpt-4.1'
+      }
+    },
+    gemini: {
+      hasKey: geminiKey,
+      workflowModel: process.env.WORKFLOW_GEMINI_MODEL || 'gemini-1.5-pro',
+      council: {
+        requirements: process.env.COUNCIL_REQ_MODEL || 'gemini-1.5-flash',
+        review: process.env.COUNCIL_REVIEW_MODEL || process.env.COUNCIL_REQ_MODEL || 'gemini-1.5-flash'
+      }
+    },
+    mock: {
+      enabled: mock,
+      note: mock ? 'One or more provider keys missing -> mock fallback active' : 'mock disabled'
+    }
+  };
+});
 
 interface EnqueueBody {
   type: Task['type'];
