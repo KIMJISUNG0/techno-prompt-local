@@ -29,6 +29,7 @@ import 'node:crypto';
 import { runWorkflow } from '../services/workflow';
 import { runModelCouncil } from '../services/model-council';
 import { runEnsemble } from '../services/ensemble';
+import { registerMemoryRoutes } from './memory-routes';
 import { isMockEnabled } from '../services/ai-mock';
 import { applyPatches } from '../services/apply-patches';
 
@@ -69,6 +70,9 @@ app.addHook('onSend', async (req, reply, payload) => {
   if (allowNoRedis) {
     app.log.info('ORCH_ALLOW_NO_REDIS=1 -> Using in-memory queue & cache (Redis disabled)');
   }
+
+  // Memory system routes
+  await registerMemoryRoutes(app);
 
 app.get('/health', async () => ({ ok: true }));
 
