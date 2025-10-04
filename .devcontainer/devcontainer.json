@@ -1,0 +1,38 @@
+{
+  "name": "techno-prompt",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "github.copilot",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "typescript.tsserver.useSeparateSyntaxServer": true,
+        "eslint.format.enable": true
+      }
+    }
+  },
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite Dev Server",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "node",
+  "updateContentCommand": "npm install",
+  "postCreateCommand": "npm run typecheck || true",
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb",
+    "storage": "8gb"
+  }
+}
