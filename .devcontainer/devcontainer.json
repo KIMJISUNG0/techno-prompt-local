@@ -29,7 +29,7 @@
   },
   "remoteUser": "node",
   "updateContentCommand": "npm install",
-  "postCreateCommand": "npm run typecheck || true",
+  "postCreateCommand": "npm run ci || true",
   "hostRequirements": {
     "cpus": 2,
     "memory": "4gb",

@@ -18,3 +18,20 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+  - type: web
+    name: orchestrator
+    env: node
+    buildCommand: npm install && npm run build:orchestrator
+    startCommand: npm run start:orchestrator
+    envVars:
+      - key: ORCH_ALLOW_NO_REDIS
+        value: 1
+  - type: web
+    name: orchestrator
+    env: node
+    buildCommand: npm install && npm run build:orchestrator
+    startCommand: npm run start:orchestrator
+    envVars:
+      - key: ORCH_ALLOW_NO_REDIS
+        value: 1
+

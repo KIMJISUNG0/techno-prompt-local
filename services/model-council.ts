@@ -185,7 +185,7 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
   });
 
   // 6 Aggregate & extract patches (prefer refined if ok else draft)
-  const lastStep = timeline.findLast(s => s.role === 'refine');
+  const lastStep = timeline.findLast((s: CouncilStepRecord) => s.role === 'refine');
   const mergeSource = (lastStep && lastStep.ok && lastStep.content) ? lastStep.content : draft;
   const patches = extractPatches(mergeSource);
 

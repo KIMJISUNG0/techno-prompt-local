@@ -58,7 +58,20 @@ const memResults: Record<string, any> = {};
 const app: FastifyInstance = Fastify({ logger: true });
 
 async function bootstrap() {
-  await app.register(cors, { origin: true });
+  await app.register(cors, {
+  origin: [
+    'http://localhost:5173',               // 로컬 프론트(개발용)
+    'https://techno-prompt-local.onrender.com' // 배포 프론트
+  ],
+  methods: ['GET','POST','OPTIONS'],
+  credentials: false
+});
+
+// (선택) Private Network Access 대응 헤더 — 일부 브라우저/환경에서 필요
+app.addHook('onSend', async (req, reply, payload) => {
+  reply.header('Access-Control-Allow-Private-Network', 'true');
+  return payload;
+});
 
   if (allowNoRedis) {
     app.log.info('ORCH_ALLOW_NO_REDIS=1 -> Using in-memory queue & cache (Redis disabled)');
@@ -285,6 +298,50 @@ app.get('/ensemble', async (req, reply) => {
     reply.code(500);
     return { error: e.message };
   }
+});
+
+// Lightweight orchestration self-test; skips steps requiring missing keys unless mock mode.
+app.get('/self-test', async () => {
+  const aiStatus = {
+    openaiKey: !!process.env.OPENAI_API_KEY,
+    geminiKey: !!process.env.GEMINI_API_KEY,
+    mock: isMockEnabled(),
+  };
+  const tests: any = {};
+  // Workflow test
+  if (aiStatus.mock || (aiStatus.geminiKey || aiStatus.openaiKey)) {
+    try {
+      const wf = await runWorkflow('ping');
+      tests.workflow = { ok: true, keys: Object.keys(wf) };
+    } catch (e: any) {
+      tests.workflow = { ok: false, error: e.message };
+    }
+  } else {
+    tests.workflow = { ok: false, skipped: 'no provider keys & mock disabled' };
+  }
+  // Council test
+  if (aiStatus.mock || (aiStatus.geminiKey && aiStatus.openaiKey)) {
+    try {
+      const council = await runModelCouncil({ userPrompt: 'self-test small helper function' });
+      tests.council = { ok: true, steps: council.timeline.length, patches: council.proposedPatches.length };
+    } catch (e: any) {
+      tests.council = { ok: false, error: e.message };
+    }
+  } else {
+    tests.council = { ok: false, skipped: 'needs both OpenAI & Gemini or mock' };
+  }
+  // Ensemble test
+  if (aiStatus.mock || (aiStatus.geminiKey && aiStatus.openaiKey)) {
+    try {
+      const ens = await runEnsemble({ prompt: 'ensemble self test', creativeVariants: 1, cache: false });
+      tests.ensemble = { ok: true, have: Object.keys(ens) };
+    } catch (e: any) {
+      tests.ensemble = { ok: false, error: e.message };
+    }
+  } else {
+    tests.ensemble = { ok: false, skipped: 'needs both providers or mock' };
+  }
+  return { server: { ok: true }, aiStatus, tests };
 });
 
   const port = Number(process.env.PORT || 4000);
