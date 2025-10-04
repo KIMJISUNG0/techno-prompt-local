@@ -1,7 +1,6 @@
 {
   "name": "techno-prompt",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:fast": "VITE_LIMIT_GENRES=techno,hiphop,trap vite",
@@ -9,12 +8,12 @@
     "dev:strict": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "dev:codespaces": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "build": "vite build",
-    "build:orchestrator": "tsc -p tsconfig.orchestrator.json",
+  "build:orchestrator": "tsc -p tsconfig.orchestrator.json",
     "preview": "vite preview",
     "health": "curl -I -s http://localhost:5173 | head -n 1 || exit 1",
     "preview:host": "vite preview --host 0.0.0.0 --port 5173",
     "start": "npm run preview:host",
-    "start:orchestrator": "node dist/orchestrator/index.js",
+  "start:orchestrator": "node dist/orchestrator/index.js",
     "dev:watch": "while true; do echo '[DEV RESTART]' && vite --host 0.0.0.0; echo 'Exited with $?'; sleep 2; done",
     "health:loop": "while true; do date '+%H:%M:%S' ; curl -s -o /dev/null -w '%{http_code}\\n' http://localhost:5173 || true; sleep 5; done",
     "validate:taxonomy": "node scripts/validate-taxonomy.cjs",

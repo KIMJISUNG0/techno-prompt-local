@@ -58,14 +58,7 @@ const memResults: Record<string, any> = {};
 const app: FastifyInstance = Fastify({ logger: true });
 
 async function bootstrap() {
-  await app.register(cors, {
-  origin: [
-    'http://localhost:5173',               // 로컬 프론트(개발용)
-    'https://techno-prompt-local.onrender.com' // 배포 프론트
-  ],
-  methods: ['GET','POST','OPTIONS'],
-  credentials: false
-});
+  await app.register(cors, { origin: '*', methods: ['GET','POST','OPTIONS'], credentials: false });
 
 // (선택) Private Network Access 대응 헤더 — 일부 브라우저/환경에서 필요
 app.addHook('onSend', async (req, reply, payload) => {

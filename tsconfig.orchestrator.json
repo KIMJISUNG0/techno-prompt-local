@@ -6,5 +6,5 @@
     "module": "CommonJS",
     "lib": ["es2023", "DOM"]
   },
-  "include": ["orchestrator", "services"]
+  "include": ["orchestrator", "services", "workers"]
 }
