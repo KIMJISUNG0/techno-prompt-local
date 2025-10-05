@@ -23,3 +23,22 @@ yarn-error.log*
 
 # Misc
 *.local
+
+# ---- Data / Media (kept in Drive, not in git) ----
+memory/audio/**/*
+memory/audio/*
+*.wav
+*.mp3
+*.flac
+*.ogg
+
+# Analysis / exports (optional ignore)
+colab_dataset.*
+*.parquet
+analysis_outputs/
+
+# Allow structured analysis artifacts (commit these)
+!analysis/metrics.csv
+!analysis/metrics_summary.json
+!analysis/figures/
+!memory/records/prompts.jsonl
