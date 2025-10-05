@@ -1,6 +1,9 @@
 import { getLiveAPI } from './engine';
 
-export interface RunResult { ok: boolean; error?: string }
+export interface RunResult {
+  ok: boolean;
+  error?: string;
+}
 
 // Block obvious globals & attempts to escape sandbox. We purposely do NOT expose
 // Function constructor via user code (we use it internally once) and avoid 'with'.
@@ -9,16 +12,31 @@ const BLOCK_PATTERN = /(document|fetch|XMLHttpRequest|localStorage|Function|eval
 
 // Whitelist subset of API keys exposed to user code to reduce accidental misuse.
 const ALLOWED_KEYS = [
-  'setBPM','setSwing','play','update','stop','stopAll','list',
-  'registerPatch','triggerPatch','listPatches','log',
+  'setBPM',
+  'setSwing',
+  'play',
+  'update',
+  'stop',
+  'stopAll',
+  'list',
+  'registerPatch',
+  'triggerPatch',
+  'listPatches',
+  'log',
   // Tone.js hybrid bridge
-  'tonePlay','toneStop','toneStopAll','listTone'
-  ,'setToneBPM','tonePatternPlay','tonePatternStop','tonePatternStopAll'
+  'tonePlay',
+  'toneStop',
+  'toneStopAll',
+  'listTone',
+  'setToneBPM',
+  'tonePatternPlay',
+  'tonePatternStop',
+  'tonePatternStopAll',
 ] as const;
 
-type AllowedKey = typeof ALLOWED_KEYS[number];
+type AllowedKey = (typeof ALLOWED_KEYS)[number];
 
-function buildUserAPI(){
+function buildUserAPI() {
   const full = getLiveAPI();
   const safe: Record<string, any> = {};
   for (const k of ALLOWED_KEYS) safe[k] = (full as any)[k];
@@ -45,7 +63,7 @@ export function runLiveCode(source: string): RunResult {
     const wrapped = new Function(...argNames, injected + source + '\n');
     wrapped(...args);
     return { ok: true };
-  } catch (e:any) {
+  } catch (e: any) {
     return { ok: false, error: e?.message || String(e) };
   }
 }

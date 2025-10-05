@@ -20,14 +20,14 @@ async function fetchJson(path:string, init?:RequestInit){
 
 async function ensureServerInProcess(){
   // If already up, skip.
-  try { const r = await fetch(ORIGIN+'/health'); if (r.ok) return; } catch {}
+  try { const r = await fetch(ORIGIN+'/health'); if (r.ok) return; } catch { /* ignore connection errors */ }
   // Force memory mode before importing orchestrator.
   if (!process.env.ORCH_ALLOW_NO_REDIS) process.env.ORCH_ALLOW_NO_REDIS = '1';
   // Dynamically import orchestrator (it self-bootstraps).
-  await import('../orchestrator/index.ts');
+  await import('../orchestrator/index.js');
   const startAt = Date.now();
   while (Date.now() - startAt < START_TIMEOUT_MS) {
-    try { const r = await fetch(ORIGIN+'/health'); if (r.ok) return; } catch {}
+    try { const r = await fetch(ORIGIN+'/health'); if (r.ok) return; } catch { /* ignore connection errors */ }
     await wait(300);
   }
   throw new Error('Server start timeout');
@@ -56,7 +56,7 @@ async function run(){
     assert(prompt.status===200,'prompt http '+prompt.status);
     assert(typeof prompt.data.text==='string','prompt text missing');
     assert(prompt.data.length<=200,'prompt >200 chars');
-    console.log(JSON.stringify({
+    console.warn(JSON.stringify({
       health: health.data,
       presets: { count: presets.data.items.length },
       prompt: {
@@ -70,7 +70,7 @@ async function run(){
       },
       ms: Date.now()-start
     }, null, 2));
-    console.log('MUSIC_SMOKE_OK');
+    console.warn('MUSIC_SMOKE_OK');
   } catch (e:any) {
     console.error('MUSIC_SMOKE_FAIL', e.message);
     process.exitCode = 1;

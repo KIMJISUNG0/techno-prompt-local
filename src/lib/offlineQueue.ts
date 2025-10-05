@@ -15,9 +15,13 @@ export interface OfflinePrompt {
 
 const KEY = 'funkPromptQueueV1';
 
-function safeParse<T>(raw: string|null, fallback: T): T {
-  if(!raw) return fallback;
-  try { return JSON.parse(raw) as T; } catch { return fallback; }
+function safeParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 export function loadQueue(): OfflinePrompt[] {
@@ -33,7 +37,8 @@ export function saveQueue(list: OfflinePrompt[]) {
 export function upsertPrompt(p: OfflinePrompt): { updated: boolean; list: OfflinePrompt[] } {
   const list = loadQueue();
   const idx = list.findIndex(x => x.hash === p.hash);
-  if (idx >= 0) list[idx] = p; else list.push(p);
+  if (idx >= 0) list[idx] = p;
+  else list.push(p);
   saveQueue(list);
   return { updated: idx >= 0, list };
 }

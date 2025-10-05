@@ -16,9 +16,9 @@ export interface DraftPatternsPayload {
 }
 
 function patternsForSection(sec: SectionNode): SectionPatterns {
-  const kick = sec.energy >=4 ? 'C2 . C2 . C2 . C2 .' : 'C2 . . . C2 . . .';
-  const hat  = sec.energy >=4 ? 'x.x.x.x.x.x.x.x.' : 'x.x. . x.x. .';
-  const bass = sec.energy >=4 ? 'C2_ . . G2_ . .' : 'C2 . . . G2 . . .';
+  const kick = sec.energy >= 4 ? 'C2 . C2 . C2 . C2 .' : 'C2 . . . C2 . . .';
+  const hat = sec.energy >= 4 ? 'x.x.x.x.x.x.x.x.' : 'x.x. . x.x. .';
+  const bass = sec.energy >= 4 ? 'C2_ . . G2_ . .' : 'C2 . . . G2 . . .';
   return { id: sec.id, kick, hat, bass, energy: sec.energy, kind: sec.kind };
 }
 

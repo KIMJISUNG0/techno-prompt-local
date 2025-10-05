@@ -6,14 +6,14 @@ export type GenreId = string; // intentionally loose; downstream can narrow
 export interface GenreCandidate {
   genre: GenreId;
   confidence: number; // 0..1 heuristic score
-  rationale: string;  // short human readable explanation
+  rationale: string; // short human readable explanation
   moodCoverage: number; // 0..1 coverage of supplied moods
 }
 
 export interface RecommendationResult {
   intent: IntentNormalized;
   candidates: GenreCandidate[]; // sorted desc by confidence
-  issues: string[];             // surfaced validation issues
+  issues: string[]; // surfaced validation issues
 }
 
 // Mood clusters -> genre hints (primitive heuristic lookups) -----------------
@@ -47,7 +47,9 @@ const ERA_BIAS: Partial<Record<NonNullable<IntentInput['era']>, Record<GenreId, 
 };
 
 /** Aggregate heuristic scoring of candidate genres based on mood overlap + biases. */
-function scoreGenres(intent: IntentNormalized): Map<GenreId, { score: number; coverage: number; rationaleParts: string[] }> {
+function scoreGenres(
+  intent: IntentNormalized
+): Map<GenreId, { score: number; coverage: number; rationaleParts: string[] }> {
   const map = new Map<GenreId, { score: number; coverage: number; rationaleParts: string[] }>();
   const moods = intent.moods;
   // Mood contributions
@@ -97,7 +99,10 @@ function scoreGenres(intent: IntentNormalized): Map<GenreId, { score: number; co
 }
 
 /** Convert raw map into sorted top N candidates with final normalization */
-function finalizeCandidates(map: Map<GenreId, { score: number; coverage: number; rationaleParts: string[] }>, topN = 3): GenreCandidate[] {
+function finalizeCandidates(
+  map: Map<GenreId, { score: number; coverage: number; rationaleParts: string[] }>,
+  topN = 3
+): GenreCandidate[] {
   const entries = Array.from(map.entries()).map(([genre, v]) => ({
     genre,
     confidence: v.score,

@@ -32,25 +32,25 @@ export type Era = '90s' | '2000s' | 'modern' | 'futuristic';
 
 // Intensity: 1..5 scale. We brand the number to prevent accidental arithmetic
 // without intentional casting (lightweight nominal typing pattern).
-export type IntensityLevel = number & { readonly __tag: 'IntensityLevel(1-5)'};
+export type IntensityLevel = number & { readonly __tag: 'IntensityLevel(1-5)' };
 
 export interface IntentInput {
-  moods: Mood[];              // e.g. ['dark','hypnotic'] – order can matter for weight later
+  moods: Mood[]; // e.g. ['dark','hypnotic'] – order can matter for weight later
   useCase?: UseCase;
   era?: Era;
-  intensity: IntensityLevel;  // expected 1..5 (clamped when normalized)
-  durationSec?: number;       // optional target total track length
+  intensity: IntensityLevel; // expected 1..5 (clamped when normalized)
+  durationSec?: number; // optional target total track length
 }
 
 // Normalized variant ensures sane bounds and at least one mood.
 export interface IntentNormalized extends Omit<IntentInput, 'intensity'> {
-  intensity: IntensityLevel;  // guaranteed clamped 1..5
-  moods: Mood[];              // guaranteed length >=1 (fallback: ['dark'])
+  intensity: IntensityLevel; // guaranteed clamped 1..5
+  moods: Mood[]; // guaranteed length >=1 (fallback: ['dark'])
 }
 
 // Result of a basic validation pass.
 export interface IntentValidation {
-  issues: string[];           // human readable validation issues (non-fatal)
+  issues: string[]; // human readable validation issues (non-fatal)
   normalized: IntentNormalized;
 }
 

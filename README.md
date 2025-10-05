@@ -322,6 +322,63 @@ Fastify 오케스트레이터 없이 프롬프트를 로깅하고 분석 루프�
 4. VS Code 에서 `git pull` → 확인 후 필요 시 push
 5. (선택) 오디오 생성 & rename → 분석 셀 → summary.json 커밋 → pull → 다음 프롬프트
 
+## Lab Sync & Analysis Helper (Copilot Prompt Bundle)
+
+Colab 분석 산출물을 VSCode 로 왕복하고, 특정 해시(prefix)만 필터링/진단하기 위한 Copilot Chat 지시문 모음.
+
+### A) Git 루트/리모트/작성자 점검
+```
+git rev-parse --show-toplevel
+git branch --show-current
+git remote -v
+git config --global user.name "KIMJISUNG0"
+git config --global user.email "slyjek@gmail.com"
+git remote set-url origin https://github.com/KIMJISUNG0/techno-prompt-local.git
+```
+
+### B) .gitignore 무시 패턴 점검
+```
+git check-ignore -v docs/lab/* | cat   # 출력 없으면 OK
+```
+
+### C) Colab 산출물 커밋/푸시 원샷
+```
+git stash push -m pre-lab-sync || echo "no local changes";
+git add docs/lab/*.csv docs/lab/*.json docs/lab/*.png memory/records/prompts.jsonl;
+git commit -m "lab: sync from Colab (latest analysis)" || echo "no changes";
+git pull --rebase origin main;
+git push origin main;
+git log -1 --name-only;
+```
+
+### D) 해시 반영 여부 확인 (예: e272747f)
+```
+Select-String -Path docs/lab/metrics.csv -Pattern e272747f; if(!$?){"metrics.csv에 없음"}
+Select-String -Path docs/lab/summary.json -Pattern e272747f; if(!$?){"summary.json에 없음"}
+```
+
+### E) 누락 해시 탐지 스크립트
+```
+npx tsx scripts/find-missing-hashes.ts
+```
+출력: `{ audioCount, analyzedCount, missingCount, missing[] }`.
+
+### F) 특정 prefix 분석 결과 필터 (최신 1개)
+```
+npx tsx scripts/filter-analysis-by-prefix.ts --markdown
+```
+
+### Colab 경로 & 파일명 파서 패치 (요약)
+1. 경로 자동 탐지: `Othercomputers/내 노트북` / `My Laptop` 중 존재하는 경로 선택.
+2. 정규식: `^(\d{8}T\d{6}Z__[a-z0-9]+__[a-f0-9]{8}__\d{2,3}bpm)(?:__v\d+)?\.(mp3|wav)$`
+3. 매칭된 base prefix + `.prompt.txt` 짝이 있는 세트만 최신 N 개 분석.
+
+### 분석 누락 발생 시 체크리스트
+- Colab INBOX 에 prefix__v1/v2.mp3 존재?
+- `.prompt.txt` 동반 여부
+- 정규식 hash 추출 성공 여부
+- 기존 metrics.csv 에 동일 hash → 중복 스킵 로직 작동?
+
 JSONL 한 줄 예:
 ```json
 {"hash":"9cd2139c","ts":"2025-10-05T09:33:12.123Z","bpm":106,"mode":"short","text":"Funk ...","filenamePrefix":"20251005T093312Z__short__9cd2139c__106bpm"}
@@ -450,3 +507,129 @@ MASTER: transparent glue, gentle high shelf
 3. `render.yaml` 로 build/publish 경로 (`dist`) 설정
 
 수동 트리거가 필요 없으므로 관리 부담 최소화. 추가로 lint/typecheck 를 Actions 워크플로에 확장할 수 있습니다.
+
+## 개발 환경 설정
+
+### 권장 VS Code 확장프로그램
+이 프로젝트는 다음 확장프로그램들과 최적화되어 있습니다:
+
+**핵심 도구:**
+- GitHub Copilot & Chat: AI 지원 코드 작성
+- ESLint: 코드 품질 검사
+- Prettier: 코드 포맷팅
+- TailwindCSS IntelliSense: 스타일 자동완성
+- ErrorLens: 실시간 오류 표시
+
+**생산성 도구:**
+- Material Icon Theme: 파일 아이콘
+- GitLens: Git 히스토리 시각화
+- REST Client: API 테스트
+- Live Server: 로컬 서버
+- Code Spell Checker: 맞춤법 검사
+
+### 개발 스크립트
+```bash
+# 개발 서버 시작
+npm run dev
+
+# 타입 체크
+npm run typecheck
+
+# 린트 검사
+npm run lint
+
+# 코드 포맷팅
+npm run format
+
+# 전체 CI 체크 (권장)
+npm run ci
+
+# 오케스트레이터 시작 (백엔드)
+npm run dev:orchestrator:mem
+```
+
+### VS Code 설정
+프로젝트에는 다음이 미리 구성되어 있습니다:
+- **자동 포맷팅**: 저장 시 Prettier + ESLint 자동 실행
+- **TailwindCSS**: 클래스 자동완성 및 검증
+- **TypeScript**: 상대 경로 import, 자동 organize imports
+- **Tasks**: Ctrl+Shift+P → "Tasks: Run Task"로 개발 작업 실행
+- **Debug**: F5로 Chrome 디버깅 또는 Node.js 스크립트 디버깅
+
+### 코드 품질 도구
+- **TypeScript**: 엄격한 타입 검사
+- **ESLint**: React/TypeScript 규칙 적용
+- **Prettier**: 일관된 코드 스타일
+- **Vitest**: 빠른 단위 테스트
+- **Husky**: commit 전 자동 검증 (lint-staged)
+
+## 배포 옵션 비교: RENDER vs GCP
+
+### 🚀 **현재 (RENDER)**
+```yaml
+# render.yaml
+services:
+  - type: web
+    name: techno-prompt
+    runtime: static
+    buildCommand: bash ./render-build.sh
+    staticPublishPath: ./dist
+```
+
+### ☁️ **GCP 전환 이점 (무료 범위)**
+
+| 기능 | RENDER | GCP | 코랩 연동 이점 |
+|------|--------|-----|---------------|
+| **정적 호스팅** | ✅ 무료 | ✅ Firebase Hosting 무료 | - |
+| **백엔드 API** | ✅ 무료 (제한적) | ✅ Cloud Run 2M 요청/월 | 동일 Google 계정 인증 |
+| **데이터베이스** | ❌ PostgreSQL 유료 | ✅ Firestore 1GB 무료 | 코랩에서 직접 쿼리 가능 |
+| **파일 저장소** | ❌ 별도 서비스 필요 | ✅ Cloud Storage 5GB 무료 | Google Drive 자동 동기화 |
+| **AI/ML 서비스** | ❌ 외부 API만 | ✅ Vertex AI 통합 | 코랩 GPU/TPU → Vertex AI |
+| **모니터링** | ✅ 기본 제공 | ✅ Cloud Logging 무료 | 코랩 실행 로그 통합 |
+| **CI/CD** | ✅ GitHub 연동 | ✅ Cloud Build 무료 | - |
+
+### 🔗 **코랩 연동 특화 이점**
+
+#### **1. seamless Google 생태계**
+```python
+# 코랩에서 한 번의 인증으로 모든 GCP 서비스 접근
+from google.colab import auth
+auth.authenticate_user()
+
+# 분석 결과를 앱에서 바로 사용 가능
+upload_analysis_result("audio-pattern", input_data, results)
+```
+
+#### **2. 실시간 데이터 파이프라인**
+```
+Colab 분석 → Cloud Storage → Firestore → React App
+     ↓              ↓             ↓          ↓
+  GPU 가속       자동 백업     실시간 동기화  즉시 시각화
+```
+
+#### **3. 비용 최적화**
+- **Colab Pro**: $10/월로 더 많은 GPU/TPU 시간
+- **GCP 무료**: 월 $0으로 프로덕션 배포
+- **VS** RENDER + 외부 DB: 월 $20+ 필요
+
+### 🛠️ **GCP 전환 명령어**
+```bash
+# 1. GCP 프로젝트 생성 및 설정
+gcloud projects create techno-prompt-2025
+gcloud config set project techno-prompt-2025
+
+# 2. 필요한 API 활성화
+gcloud services enable appengine.googleapis.com
+gcloud services enable cloudbuild.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable firestore.googleapis.com
+
+# 3. 앱 초기화 및 배포
+gcloud app create --region=asia-northeast1
+npm run gcp:deploy
+
+# 4. 코랩 연동 테스트
+npm run gcp:colab:generate
+```
+
+**결론**: 코랩 중심 워크플로라면 GCP 전환이 강력히 권장됩니다! 🎯

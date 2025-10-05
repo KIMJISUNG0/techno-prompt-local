@@ -60,14 +60,16 @@ const ALL_PACKS: GenrePack[] = [
 // 사용: VITE_LIMIT_GENRES=techno,hiphop npm run dev
 let limited: GenrePack[] | undefined;
 if (typeof process !== 'undefined' && process.env && process.env.VITE_LIMIT_GENRES) {
-  const allow = process.env.VITE_LIMIT_GENRES.split(',').map(s=> s.trim()).filter(Boolean);
-  limited = ALL_PACKS.filter(p=> allow.includes(p.id));
+  const allow = process.env.VITE_LIMIT_GENRES.split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  limited = ALL_PACKS.filter(p => allow.includes(p.id));
   if (limited.length === 0) {
     // 잘못된 필터 시 전체 사용 (경고)
-  console.warn('[genres] VITE_LIMIT_GENRES 지정했지만 매칭 없음 → 전체 사용');
+    console.warn('[genres] VITE_LIMIT_GENRES 지정했지만 매칭 없음 → 전체 사용');
     limited = undefined;
   } else {
-  console.warn('[genres] 제한된 장르 로드:', allow.join(','));
+    console.warn('[genres] 제한된 장르 로드:', allow.join(','));
   }
 }
 export const GENRE_PACKS: GenrePack[] = limited || ALL_PACKS;

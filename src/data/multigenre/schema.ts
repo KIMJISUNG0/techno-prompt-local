@@ -10,18 +10,22 @@ export interface GroupMeta {
   universal?: boolean; // true if from universal pack
 }
 
-export interface SubOpt { id: string; label: string; prompt: string }
+export interface SubOpt {
+  id: string;
+  label: string;
+  prompt: string;
+}
 
 export interface Opt {
   id: string;
   label: string;
   prompt: string;
-  group: string;             // group id reference
+  group: string; // group id reference
   family?: string;
   primary?: boolean;
-  genres?: GenreId[];        // restrict universal option to specific genres
-  weight?: number;           // sorting weight
-  tags?: string[];           // arbitrary descriptors
+  genres?: GenreId[]; // restrict universal option to specific genres
+  weight?: number; // sorting weight
+  tags?: string[]; // arbitrary descriptors
 }
 
 export interface UniversalPack {
@@ -36,7 +40,7 @@ export interface GenrePack {
   description?: string;
   orderWeight: number;
   groups: GroupMeta[]; // genre specific groups (not universal)
-  options: Opt[];      // genre specific options
+  options: Opt[]; // genre specific options
   subopts?: Record<string, SubOpt[]>;
   tags?: string[];
   inheritsUniversal?: boolean;

@@ -170,7 +170,7 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
   });
 
   // 5 Refine (GPT)
-  const refined = await record('refine', mRefine, async () => {
+  const _refined = await record('refine', mRefine, async () => {
     if (mockMode && !openai) return mockChat({ model: 'gpt-mock', role: 'refine', prompt: draft + review, format: 'patches' });
     if (!openai) throw new Error('openai unavailable');
     const r = await openai.chat.completions.create({
@@ -185,7 +185,8 @@ export async function runModelCouncil(opts: CouncilOptions): Promise<CouncilResu
   });
 
   // 6 Aggregate & extract patches (prefer refined if ok else draft)
-  const lastStep = timeline.findLast((s: CouncilStepRecord) => s.role === 'refine');
+  const refineSteps = timeline.filter((s: CouncilStepRecord) => s.role === 'refine');
+  const lastStep = refineSteps[refineSteps.length - 1];
   const mergeSource = (lastStep && lastStep.ok && lastStep.content) ? lastStep.content : draft;
   const patches = extractPatches(mergeSource);
 

@@ -1,5 +1,11 @@
 import React, { useCallback } from 'react';
-import { useGenreData, useComposerStore, ComposerSelection, GenreLeaf, GenreGroup } from '../../features/composer/useComposerStore';
+import {
+  useGenreData,
+  useComposerStore,
+  ComposerSelection,
+  GenreLeaf,
+  GenreGroup,
+} from '../../features/composer/useComposerStore';
 
 export function Composer({ onChange }: { onChange: (s: ComposerSelection) => void }) {
   const { data, error } = useGenreData();
@@ -18,7 +24,12 @@ export function Composer({ onChange }: { onChange: (s: ComposerSelection) => voi
 
   return (
     <div className="flex flex-col gap-4 h-full" aria-label="Composer">
-      <ComposerHeader search={store.search} onSearch={store.setSearch} hybrid={store.hybridEnabled} onToggleHybrid={store.toggleHybrid} />
+      <ComposerHeader
+        search={store.search}
+        onSearch={store.setSearch}
+        hybrid={store.hybridEnabled}
+        onToggleHybrid={store.toggleHybrid}
+      />
       <div className="flex flex-1 gap-6 overflow-hidden">
         <div className="flex-1 overflow-auto">
           <GroupGrid
@@ -42,7 +53,9 @@ export function Composer({ onChange }: { onChange: (s: ComposerSelection) => voi
           {store.warning && (
             <div className="mt-2 text-xs text-yellow-400" role="alert">
               {store.warning}
-              <button className="ml-2 underline" onClick={store.clearWarning}>닫기</button>
+              <button className="ml-2 underline" onClick={store.clearWarning}>
+                닫기
+              </button>
             </div>
           )}
         </div>
@@ -51,7 +64,17 @@ export function Composer({ onChange }: { onChange: (s: ComposerSelection) => voi
   );
 }
 
-function ComposerHeader({ search, onSearch, hybrid, onToggleHybrid }: { search: string; onSearch: (v: string) => void; hybrid: boolean; onToggleHybrid: () => void }) {
+function ComposerHeader({
+  search,
+  onSearch,
+  hybrid,
+  onToggleHybrid,
+}: {
+  search: string;
+  onSearch: (v: string) => void;
+  hybrid: boolean;
+  onToggleHybrid: () => void;
+}) {
   return (
     <div className="flex items-center gap-4">
       <input
@@ -74,7 +97,7 @@ function GroupGrid({
   hybrid,
   onPickPrimary,
   onPickHybrid,
-  hybridEnabled
+  hybridEnabled,
 }: {
   groups: GenreGroup[];
   primary: { groupId: string; leafId: string } | null;
@@ -117,7 +140,7 @@ function LeafButton({
   isHybrid,
   hybridEnabled,
   onPickPrimary,
-  onPickHybrid
+  onPickHybrid,
 }: {
   leaf: GenreLeaf;
   isPrimary: boolean;
@@ -146,8 +169,8 @@ function LeafButton({
         (isPrimary
           ? 'border-teal-500 bg-teal-600/20'
           : isHybrid
-          ? 'border-purple-500 bg-purple-600/20'
-          : 'border-neutral-700 hover:border-neutral-500')
+            ? 'border-purple-500 bg-purple-600/20'
+            : 'border-neutral-700 hover:border-neutral-500')
       }
     >
       {leaf.label}
@@ -161,7 +184,7 @@ function SummaryPanel({
   group,
   hybridEnabled,
   primaryLeafId,
-  onConfirm
+  onConfirm,
 }: {
   leaf: GenreLeaf | null;
   hybridLeaf: GenreLeaf | null;
@@ -181,7 +204,9 @@ function SummaryPanel({
         <div className="opacity-80">{leaf.desc}</div>
         {hybridLeaf && hybridLeaf.id !== leaf.id && <div className="opacity-70">+ {hybridLeaf.desc}</div>}
       </div>
-      <pre className="bg-neutral-900/60 p-2 rounded whitespace-pre-wrap text-[11px] leading-snug max-h-56 overflow-auto">{preview}</pre>
+      <pre className="bg-neutral-900/60 p-2 rounded whitespace-pre-wrap text-[11px] leading-snug max-h-56 overflow-auto">
+        {preview}
+      </pre>
       <button
         onClick={onConfirm}
         className="mt-2 bg-teal-600 hover:bg-teal-500 text-white rounded px-3 py-1 text-xs font-medium"
@@ -199,7 +224,8 @@ function parseBpmRange(bpm: string): [number, number] | null {
     if (!isNaN(a) && !isNaN(b)) return [a, b];
   }
   if (bpm.match(/^[0-9]+$/)) {
-    const v = parseInt(bpm, 10); return [v, v];
+    const v = parseInt(bpm, 10);
+    return [v, v];
   }
   return null;
 }
@@ -225,7 +251,7 @@ function buildPreview(a: GenreLeaf, b: GenreLeaf | null, groupLabel: string): st
       `Tempo: ${a.bpm} | Time: ${a.time}`,
       `Instruments (Must): ${a.must_instruments.slice(0, 4).join(', ')}`,
       `Do not: ${a.avoid.slice(0, 3).join(', ')}`,
-      `Notes: keep arrangement simple; prioritize ${a.tags[0]} feel.`
+      `Notes: keep arrangement simple; prioritize ${a.tags[0]} feel.`,
     ].join('\n');
   }
   const bpm = intersectBpm(a.bpm, b.bpm);
@@ -237,6 +263,6 @@ function buildPreview(a: GenreLeaf, b: GenreLeaf | null, groupLabel: string): st
     `Tempo: ${bpm} | Time: ${a.time} / ${b.time}`,
     `Instruments (Must): ${instruments.join(', ')}`,
     `Do not: ${avoid.join(', ')}`,
-    `Notes: blend ${a.tags[0]} and ${b.tags[0]} texture.`
+    `Notes: blend ${a.tags[0]} and ${b.tags[0]} texture.`,
   ].join('\n');
 }

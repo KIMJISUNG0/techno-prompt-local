@@ -10,7 +10,12 @@ export interface IRMeta {
 }
 
 export type StepPattern = { type: 'steps'; steps: string }; // e.g. 'x---x---x---x---'
-export interface EventNote { beat: number; len?: number; note: string; vel?: number }
+export interface EventNote {
+  beat: number;
+  len?: number;
+  note: string;
+  vel?: number;
+}
 export type EventPattern = { type: 'events'; events: EventNote[] };
 export type Pattern = StepPattern | EventPattern;
 
@@ -24,7 +29,11 @@ export interface TrackIR {
   fxChain?: string[]; // list of fx ids
 }
 
-export interface HarmonicIRChord { bar: number; roman?: string; notes: string[] }
+export interface HarmonicIRChord {
+  bar: number;
+  roman?: string;
+  notes: string[];
+}
 export interface HarmonicIR {
   key?: string;
   scale?: string;

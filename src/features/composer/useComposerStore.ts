@@ -64,7 +64,7 @@ export function filterGroupsForQuery(groups: GenreGroup[], search: string): Genr
   return groups
     .map(g => ({
       ...g,
-      leaves: g.leaves.filter(l => [l.label, l.desc, ...l.tags].some(f => f.toLowerCase().includes(q)))
+      leaves: g.leaves.filter(l => [l.label, l.desc, ...l.tags].some(f => f.toLowerCase().includes(q))),
     }))
     .filter(g => g.leaves.length > 0);
 }
@@ -124,11 +124,14 @@ export function useComposerStore(taxonomy: GenreTaxonomy | null): ComposerStateA
     });
   }, []);
 
-  const toSelection = useCallback<() => ComposerSelection>(() => ({
-    primary,
-    hybrid,
-    tags: Array.from(new Set([...(findLeaf(primary)?.tags || []), ...(findLeaf(hybrid)?.tags || [])])).slice(0, 6)
-  }), [primary, hybrid, findLeaf]);
+  const toSelection = useCallback<() => ComposerSelection>(
+    () => ({
+      primary,
+      hybrid,
+      tags: Array.from(new Set([...(findLeaf(primary)?.tags || []), ...(findLeaf(hybrid)?.tags || [])])).slice(0, 6),
+    }),
+    [primary, hybrid, findLeaf]
+  );
 
   const clearWarning = useCallback(() => setWarning(null), []);
 
@@ -147,6 +150,6 @@ export function useComposerStore(taxonomy: GenreTaxonomy | null): ComposerStateA
     toSelection,
     warning,
     clearWarning,
-    filteredGroups
+    filteredGroups,
   };
 }

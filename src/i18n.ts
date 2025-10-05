@@ -1,7 +1,7 @@
 // Simple i18n helper (KO + fallback EN)
-type Dict = Record<string,string|((p:Record<string,any>)=>string)>;
+type Dict = Record<string, string | ((p: Record<string, any>) => string)>;
 
-const ko:Dict = {
+const ko: Dict = {
   'wizard.title': '멀티 장르 프롬프트 컴포저',
   'wizard.hybrid': '하이브리드',
   'wizard.selectGenre': '장르 선택',
@@ -81,18 +81,32 @@ const ko:Dict = {
 };
 
 let currentLocale = 'en';
-export function setLocale(loc:string){ currentLocale = loc.startsWith('ko')?'ko':'en'; }
-export function detectLocale(){ try { const nav = (navigator as any)?.language || (navigator as any)?.languages?.[0]; if (nav) setLocale(nav); } catch { /* noop */ } }
+export function setLocale(loc: string) {
+  currentLocale = loc.startsWith('ko') ? 'ko' : 'en';
+}
+export function detectLocale() {
+  try {
+    const nav = (navigator as any)?.language || (navigator as any)?.languages?.[0];
+    if (nav) setLocale(nav);
+  } catch {
+    /* noop */
+  }
+}
 detectLocale();
 
-function format(str:string, params?:Record<string,any>){ if(!params) return str; return str.replace(/\{(\w+)\}/g,(_,k)=> params[k] ?? '{'+k+'}'); }
+function format(str: string, params?: Record<string, any>) {
+  if (!params) return str;
+  return str.replace(/\{(\w+)\}/g, (_, k) => params[k] ?? '{' + k + '}');
+}
 
-export function t(key:string, params?:Record<string,any>):string {
-  const dict = currentLocale==='ko'? ko : {};
+export function t(key: string, params?: Record<string, any>): string {
+  const dict = currentLocale === 'ko' ? ko : {};
   const val = dict[key];
   if (!val) return format(key, params);
-  if (typeof val === 'function') return (val as any)(params||{});
+  if (typeof val === 'function') return (val as any)(params || {});
   return format(val, params);
 }
 
-export function isKorean(){ return currentLocale==='ko'; }
+export function isKorean() {
+  return currentLocale === 'ko';
+}

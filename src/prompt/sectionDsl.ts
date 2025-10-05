@@ -12,32 +12,23 @@ import { IntentInput, IntentNormalized, clampIntensity, validateIntent } from '.
 export type EnergyLevel = 1 | 2 | 3 | 4 | 5; // keep small union for clarity
 
 /** Role macro tokens describing broad arrangement layers */
-export type RoleToken =
-  | 'kick'
-  | 'bass'
-  | 'hats'
-  | 'snare'
-  | 'perc'
-  | 'pad'
-  | 'lead'
-  | 'atmos'
-  | 'fx';
+export type RoleToken = 'kick' | 'bass' | 'hats' | 'snare' | 'perc' | 'pad' | 'lead' | 'atmos' | 'fx';
 
 /** Section category enums (arrangement archetypes) */
 export type SectionKind = 'intro' | 'build' | 'drop' | 'main' | 'break' | 'outro';
 
 export interface SectionNode {
-  id: string;            // stable ID (uuid-lite or deterministic index)
+  id: string; // stable ID (uuid-lite or deterministic index)
   kind: SectionKind;
-  bars: number;          // length in 4/4 bars
-  energy: EnergyLevel;   // relative energy (1..5)
+  bars: number; // length in 4/4 bars
+  energy: EnergyLevel; // relative energy (1..5)
   roles: Partial<Record<RoleToken, string>>; // role → descriptor snippet
 }
 
 export interface DraftStructure {
-  intent: IntentNormalized;  // normalized intent snapshot
-  sections: SectionNode[];   // ordered sequence
-  version: 1;                // DSL versioning for migrations
+  intent: IntentNormalized; // normalized intent snapshot
+  sections: SectionNode[]; // ordered sequence
+  version: 1; // DSL versioning for migrations
 }
 
 // ID helper (tiny deterministic incremental id for now)
@@ -80,7 +71,7 @@ export function buildDefaultDraft(rawIntent: IntentInput, opts: DraftOptions = {
   // Basic pattern: intro → build → drop → main → break → main → outro
   const pattern: SectionKind[] = ['intro', 'build', 'drop', 'main', 'break', 'main', 'outro'];
   // Allocate bars proportionally (weights manual tuned baseline)
-  const weights = [0.08, 0.12, 0.18, 0.22, 0.12, 0.18, 0.10];
+  const weights = [0.08, 0.12, 0.18, 0.22, 0.12, 0.18, 0.1];
   const sections: SectionNode[] = [];
   let acc = 0;
   pattern.forEach((kind, i) => {
@@ -152,13 +143,17 @@ function moodDescriptorAdjective(mood: string): string {
 /** Serialize draft into compact multi-line textual form */
 export function serializeDraft(draft: DraftStructure): string {
   const lines: string[] = [];
-  lines.push(`#INTENT moods=${draft.intent.moods.join(',')} useCase=${draft.intent.useCase || '-'} era=${draft.intent.era} intensity=${draft.intent.intensity}`);
+  lines.push(
+    `#INTENT moods=${draft.intent.moods.join(',')} useCase=${draft.intent.useCase || '-'} era=${draft.intent.era} intensity=${draft.intent.intensity}`
+  );
   draft.sections.forEach(s => {
     // role summary condensed: role=firstTwoWords-
-    const roleTokens = Object.entries(s.roles).map(([role, desc]) => {
-      const first = desc.split(/\s+/).slice(0, 3).join(' ');
-      return `${role}:{${first}}`;
-    }).join(' ');
+    const roleTokens = Object.entries(s.roles)
+      .map(([role, desc]) => {
+        const first = desc.split(/\s+/).slice(0, 3).join(' ');
+        return `${role}:{${first}}`;
+      })
+      .join(' ');
     lines.push(`${s.id}|${s.kind}|bars=${s.bars}|e=${s.energy}|${roleTokens}`);
   });
   return lines.join('\n');
@@ -166,7 +161,10 @@ export function serializeDraft(draft: DraftStructure): string {
 
 /** Basic parse (inverse of serialize) – lenient, ignores unknown lines */
 export function parseDraft(text: string): DraftStructure | null {
-  const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const lines = text
+    .split(/\n+/)
+    .map(l => l.trim())
+    .filter(Boolean);
   if (!lines.length || !lines[0].startsWith('#INTENT')) return null;
   const intentLine = lines[0];
   const moodsMatch = /moods=([^\s]+)/.exec(intentLine);
@@ -177,8 +175,8 @@ export function parseDraft(text: string): DraftStructure | null {
   const intensity = clampIntensity(intensityMatch ? Number(intensityMatch[1]) : 3);
   const intent: IntentNormalized = {
     moods,
-    useCase: (useCaseMatch && useCaseMatch[1] !== '-' ? useCaseMatch[1] as any : undefined),
-    era: (eraMatch ? eraMatch[1] as any : 'modern'),
+    useCase: useCaseMatch && useCaseMatch[1] !== '-' ? (useCaseMatch[1] as any) : undefined,
+    era: eraMatch ? (eraMatch[1] as any) : 'modern',
     intensity,
     durationSec: undefined,
   };
@@ -188,7 +186,7 @@ export function parseDraft(text: string): DraftStructure | null {
     if (parts.length < 5) return; // malformed
     const [id, kindRaw, barsPart, ePart, rolesPart] = parts as [string, SectionKind, string, string, string];
     const bars = Number(barsPart.replace(/bars=/, '')) || 4;
-    const energy = Number(ePart.replace(/e=/, '')) as EnergyLevel || 3;
+    const energy = (Number(ePart.replace(/e=/, '')) as EnergyLevel) || 3;
     const roles: SectionNode['roles'] = {};
     rolesPart.split(/\s+/).forEach(tok => {
       const m = /(\w+):\{([^}]+)}/.exec(tok);
