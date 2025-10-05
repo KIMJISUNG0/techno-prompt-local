@@ -212,13 +212,31 @@ export default function FunkNaturalPage(){
   async function logToServer(){
     setLogging(true); setLogError('');
     try {
-      const ORCH_BASE = (import.meta as any).env?.VITE_ORCH_BASE || (typeof window!=='undefined' && window.location.port==='5173' ? 'http://localhost:4000' : '');
-      const url = ORCH_BASE + '/lab/prompt-log';
-      const res = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: finalPrompt, bpm: state.bpm, mode: state.lengthMode }) });
-      const raw = await res.text();
-      if(!res.ok){ throw new Error(`[${res.status}] ${raw.slice(0,160)}`); }
-      let json: any;
-      try { json = raw ? JSON.parse(raw) : null; } catch { throw new Error('Non-JSON response: '+ raw.slice(0,120)); }
+      const guessList: string[] = [];
+      const envBase = (import.meta as any).env?.VITE_ORCH_BASE;
+      if(envBase) guessList.push(envBase.replace(/\/$/,''));
+      if(typeof window!=='undefined'){
+        if(window.location.port==='5173') guessList.push('http://localhost:4000');
+        // Try same origin (reverse proxy scenario)
+        guessList.push(window.location.origin);
+      }
+      // Deduplicate
+      const bases = Array.from(new Set(guessList));
+      let lastErr: string | null = null; let json: any = null;
+      for(const base of bases){
+        try {
+          // ping first
+            const ping = await fetch(base + '/lab/prompt-log/ping',{ method:'GET', cache:'no-store'});
+            if(!ping.ok) throw new Error('ping '+ping.status);
+            const res = await fetch(base + '/lab/prompt-log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: finalPrompt, bpm: state.bpm, mode: state.lengthMode }) });
+            const raw = await res.text();
+            if(!res.ok) throw new Error(`[${res.status}] ${raw.slice(0,160)}`);
+            try { json = raw ? JSON.parse(raw) : null; } catch { throw new Error('Non-JSON response from '+base+': '+ raw.slice(0,120)); }
+            if(json?.ok){ break; }
+            lastErr = 'no ok flag from '+base;
+        } catch(e:any){ lastErr = e.message; json = null; continue; }
+      }
+      if(!json) throw new Error(lastErr || 'all bases failed');
       if(!json?.ok) throw new Error(json?.error||'unknown');
       setServerHash(json.hash);
       setServerFilenamePrefix(json.filenamePrefix);
@@ -377,7 +395,7 @@ export default function FunkNaturalPage(){
             {state.lengthMode==='short' && <button className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700" onClick={()=> copy(readable)}>Readable 보기/복사</button>}
             <button className="px-4 py-2 rounded-xl bg-neutral-700 border border-neutral-600" onClick={()=> copy(filenamePrefix)}>파일 Prefix 복사</button>
             <button className="px-4 py-2 rounded-xl bg-neutral-700 border border-neutral-600" onClick={()=> copy(colabSnippet)}>Colab 스니펫 복사</button>
-            <button disabled={logging} className={`px-4 py-2 rounded-xl ${serverFilenamePrefix? 'bg-emerald-600':'bg-fuchsia-600'} disabled:opacity-50`} onClick={logToServer}>{logging? '기록 중...' : serverFilenamePrefix? '서버 기록 완료' : '서버 기록 + Prefix 확정'}</button>
+            <button disabled={logging} className={`px-4 py-2 rounded-xl ${serverFilenamePrefix? 'bg-emerald-600':'bg-fuchsia-600'} disabled:opacity-50`} onClick={logToServer}>{logging? '기록 중...' : serverFilenamePrefix? '서버 기록 완료 ✅' : '서버 기록 + Prefix 확정'}</button>
           </div>
           {serverFilenamePrefix && <div className="mt-2 text-xs text-emerald-400">Logged @ {new Date(loggedTs).toLocaleTimeString()} / hash {serverHash}</div>}
           {logError && <div className="mt-2 text-xs text-red-400">로그 실패: {logError}</div>}

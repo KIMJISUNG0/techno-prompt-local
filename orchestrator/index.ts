@@ -140,6 +140,11 @@ app.addHook('onSend', async (req, reply, payload) => {
     }
   });
 
+  // Lightweight ping for front-end multi-endpoint fallback detection
+  app.get('/lab/prompt-log/ping', async (_req, _rep) => {
+    return { ok: true, service: 'orchestrator', route: '/lab/prompt-log' };
+  });
+
   // Simple per-request timing log
   app.addHook('onRequest', (req, _reply, done) => {
     (req as any)._start = process.hrtime.bigint();
