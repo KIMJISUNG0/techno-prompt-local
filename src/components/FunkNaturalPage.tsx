@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import './funk-wizard.css';
 // lengthMode 추가: 'short'는 200자 압축 버전(compressed)을 최종 저장/복사 대상으로 사용
 // 'long'은 readable 서술형을 최종 프롬프트로 사용 (compressed는 참고/디버그 용도)
 
@@ -234,12 +235,13 @@ export default function FunkNaturalPage(){
   const updateVC = (patch:Partial<VCState>)=> setState(s=> ({...s, arrangement:{...s.arrangement, vc:{...s.arrangement.vc, ...patch}}}));
   const updateAABA = (patch:Partial<AABAState>)=> setState(s=> ({...s, arrangement:{...s.arrangement, aaba:{...s.arrangement.aaba, ...patch}}}));
   const updateBuild = (patch:Partial<BuildState>)=> setState(s=> ({...s, arrangement:{...s.arrangement, build:{...s.arrangement.build, ...patch}}}));
-  const copy = (t:string)=> navigator.clipboard.writeText(t);
+  const [toast,setToast] = useState('');
+  const copy = (t:string)=> navigator.clipboard.writeText(t).then(()=>{ setToast('Copied'); setTimeout(()=> setToast(''),1200); });
 
   const Chip = ({active,label,onClick}:{active:boolean;label:string;onClick:()=>void}) => <button onClick={onClick} className={`px-4 py-3 rounded-2xl text-sm md:text-base font-medium border transition ${active?'bg-indigo-600 text-white border-indigo-500 shadow-lg':'bg-neutral-800/40 text-neutral-100 border-neutral-700 hover:border-neutral-500'}`}>{label}</button>;
   const Section = ({title,children}:{title:string;children:React.ReactNode})=> <div className="space-y-4"><h3 className="text-lg md:text-xl font-semibold text-neutral-100">{title}</h3>{children}</div>;
 
-  return <div className="min-h-screen w-full bg-neutral-950 text-neutral-50"><div className="max-w-5xl mx-auto px-4 py-8 md:py-10"><h1 className="text-2xl md:text-3xl font-bold mb-6">Funk Prompt Wizard v2</h1>
+  return <div className="min-h-screen w-full funk-bg text-neutral-50"><div className="max-w-5xl mx-auto px-4 py-8 md:py-10 relative"><h1 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-indigo-300 via-amber-200 to-cyan-300 bg-clip-text text-transparent">Funk Prompt Wizard v2</h1>
     <div className="flex gap-2 mb-8 flex-wrap">{[1,2,3,4,5].map(n=> <button key={n} onClick={()=> setStep(n as Step)} className={`px-4 py-2 rounded-full text-sm border ${step===n?'bg-indigo-600 border-indigo-500':'bg-neutral-900 border-neutral-700'}`}>Step {n}</button>)}</div>
     {step===1 && <div className="space-y-8">
       <Section title="Substyles">
@@ -366,7 +368,7 @@ export default function FunkNaturalPage(){
           <div className="text-xs text-neutral-400 mb-3 leading-relaxed">
             {state.lengthMode==='short' ? '고밀도 단문(≤200자). 아래 내용이 그대로 저장됩니다.' : '서술형 확장 프롬프트. 연구/분석용 풍부한 정보 포함.'}
           </div>
-          <div className="text-sm whitespace-pre-wrap break-words font-medium tracking-tight">
+          <div className="text-sm whitespace-pre-wrap break-words font-medium tracking-tight prompt-glow">
             {finalPrompt}
           </div>
           <div className={`mt-3 text-xs ${finalPrompt.length>charLimit? 'text-red-400':'text-emerald-400'}`}>{finalPrompt.length} / {charLimit}{state.lengthMode==='long' && finalPrompt.length>charLimit? ' (권장 초과)': ''}</div>
@@ -414,6 +416,6 @@ export default function FunkNaturalPage(){
       </div>
       <div className="flex gap-3 flex-wrap"><button className="px-5 py-3 rounded-2xl bg-neutral-800 border border-neutral-700" onClick={()=> setStep(4)}>← 수정</button></div>
     </div>}
-  </div></div>;
+  {toast && <div className="copy-toast">{toast}</div>}</div></div>;
 }
 
