@@ -117,13 +117,23 @@ export function buildFunkNaturalPrompt(input: FunkNLInput & { debug?: boolean })
 
   let removed: string[] = [];
   const stages: { label: string; length: number }[] = [];
-  let parts = [head, evolve, groove, fxSent, mixSent, lengthSent].filter(Boolean);
+  // Optional guideline (Suno v5 style) enrichment tokens – low priority, removed first if overflow
+  // Concepts: cohesive structure, adaptive evolution, consistent timbre, pro mix control
+  const guidelineHintsEnabled = true; // could later expose as flag
+  const guidelineSentence = guidelineHintsEnabled ? sentence('Cohesive structure, adaptive evolution, consistent timbre, pro mix control.') : '';
+
+  let parts = [head, evolve, groove, fxSent, mixSent, lengthSent, guidelineSentence].filter(Boolean);
   let text = joinParts(parts);
   stages.push({ label: 'initial', length: text.length });
   const originalText = text;
   const originalLength = text.length;
 
-  // 200자 가드: 제거 우선순위 = 길이문구 → 믹스 → FX → 악기 중간 항목 → 마지막 문장
+  // 200자 가드: 제거 우선순위 = 가이드라인 → 길이문구 → 믹스 → FX → 악기 중간 항목 → 마지막 문장
+  if (text.length > 200 && guidelineSentence){
+    removed.push(guidelineSentence);
+    parts = parts.filter(p => p !== guidelineSentence);
+    text = joinParts(parts); stages.push({ label: 'drop-guidelines', length: text.length });
+  }
   if (text.length > 200 && lengthSent){
     removed.push(lengthSent);
     parts = parts.filter(p => p !== lengthSent);
