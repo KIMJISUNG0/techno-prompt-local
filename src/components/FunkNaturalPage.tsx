@@ -211,9 +211,13 @@ export default function FunkNaturalPage(){
   async function logToServer(){
     setLogging(true); setLogError('');
     try {
-      const res = await fetch('/lab/prompt-log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: finalPrompt, bpm: state.bpm, mode: state.lengthMode }) });
-      if(!res.ok){ const t = await res.text(); throw new Error(t||'HTTP '+res.status); }
-      const json = await res.json();
+      const ORCH_BASE = (import.meta as any).env?.VITE_ORCH_BASE || (typeof window!=='undefined' && window.location.port==='5173' ? 'http://localhost:4000' : '');
+      const url = ORCH_BASE + '/lab/prompt-log';
+      const res = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: finalPrompt, bpm: state.bpm, mode: state.lengthMode }) });
+      const raw = await res.text();
+      if(!res.ok){ throw new Error(`[${res.status}] ${raw.slice(0,160)}`); }
+      let json: any;
+      try { json = raw ? JSON.parse(raw) : null; } catch { throw new Error('Non-JSON response: '+ raw.slice(0,120)); }
       if(!json?.ok) throw new Error(json?.error||'unknown');
       setServerHash(json.hash);
       setServerFilenamePrefix(json.filenamePrefix);

@@ -90,6 +90,21 @@ GitHub Codespaces 에서는 브라우저 주소가 다음 형태로 노출됩니
 https://<workspace>-5173.app.github.dev/
 ```
 
+### Orchestrator 연동 (프롬프트 서버 로그)
+프론트(5173)와 오케스트레이터(4000)를 함께 쓸 때 Funk Wizard Step 5 의 `/lab/prompt-log` 호출이 실패하면 환경변수를 지정하세요.
+
+PowerShell:
+```powershell
+$env:VITE_ORCH_BASE = 'http://localhost:4000'
+npm run dev
+```
+macOS/Linux:
+```bash
+export VITE_ORCH_BASE=http://localhost:4000
+npm run dev
+```
+배포 환경(Render 등)에서 서로 다른 도메인이라면 빌드 전에 동일 변수 설정.
+
 #### 502 (Bad Gateway) 오류 대처
 | 증상 | 원인 | 해결 |
 |------|------|------|
