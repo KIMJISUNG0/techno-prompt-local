@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+// lengthMode 추가: 'short'는 200자 압축 버전(compressed)을 최종 저장/복사 대상으로 사용
+// 'long'은 readable 서술형을 최종 프롬프트로 사용 (compressed는 참고/디버그 용도)
 
 // ===== Config (Expanded, No Selection Hard Limits) =====
 const SUBSTYLES = [
@@ -44,7 +46,8 @@ interface VCState { verseBars:number; chorusBars:number; cycles:number; addBridg
 interface AABAState { aBars:number; bBars:number; cycles:number }
 interface BuildState { introBars:number; buildBars:number; dropBars:number; postBars:number; rises:number }
 interface ArrangementState{ mode: typeof ARR_MODES[number]['id']; reinstrument: ReinstrumentState; vc: VCState; aaba: AABAState; build: BuildState }
-interface PromptState{ substyles:string[]; bpm:number; meterTop:4|3|6; meterBottom:4|8; era:string; instruments:string[]; mood:string[]; fx:string[]; arrangement:ArrangementState; targetSec:number }
+type LengthMode = 'short'|'long';
+interface PromptState{ substyles:string[]; bpm:number; meterTop:4|3|6; meterBottom:4|8; era:string; instruments:string[]; mood:string[]; fx:string[]; arrangement:ArrangementState; targetSec:number; lengthMode: LengthMode }
 
 const clamp=(v:number,min:number,max:number)=> Math.max(min,Math.min(max,v));
 function secondsFromBars(bpm:number,bars:number,meterTop=4){ return ((bars*meterTop)/bpm)*60; }
@@ -134,7 +137,8 @@ const defaultState: PromptState = {
     aaba:{ aBars:8, bBars:8, cycles:1 },
     build:{ introBars:8, buildBars:16, dropBars:16, postBars:8, rises:2 }
   },
-  targetSec:230
+  targetSec:230,
+  lengthMode:'short'
 };
 
 function calcRepeats(bpm:number,targetSec:number,hookBars:number,meterTop=4){
@@ -167,7 +171,10 @@ export default function FunkNaturalPage(){
     }
   },[state]);
   const readable = useMemo(()=> composeReadable(state),[state]);
+  // short 모드에서는 200자 압축, long 모드에서는 가독성 위주(압축 불필요) -> compressed는 항상 계산하되 최종 선택 로직에서 분기
   const compressed = useMemo(()=> composeCompressed(state),[state]);
+  const charLimit = state.lengthMode==='short'? 200 : 600; // long은 느슨한 권장 한도(표시용)
+  const finalPrompt = state.lengthMode==='short' ? compressed : readable; // 저장/복사 대상 단일화
 
   const toggleChip = (arr:string[], val:string)=> arr.includes(val)? arr.filter(v=> v!==val): [...arr,val];
   const setBpm = (v:number)=> setState(s=> ({...s,bpm:clamp(Math.round(v),60,160)}));
@@ -188,8 +195,30 @@ export default function FunkNaturalPage(){
       <Section title="Substyles">
         <div className="flex flex-wrap gap-3">{SUBSTYLES.map(s=> <Chip key={s} label={s} active={state.substyles.includes(s)} onClick={()=> setState(st=> ({...st,substyles: toggleChip(st.substyles,s)}))} />)}</div>
       </Section>
-      <Section title="Tempo & Target Length">
-        <div className="grid md:grid-cols-2 gap-6 items-center"><div><label className="block mb-2 text-sm opacity-80">BPM</label><input type="range" min={70} max={150} value={state.bpm} onChange={e=> setBpm(+e.target.value)} className="w-full" /><div className="mt-2 text-lg">{state.bpm} bpm</div></div><div><label className="block mb-2 text-sm opacity-80">Target Length</label><div className="flex gap-2 flex-wrap">{[180,210,230,240,270].map(sec=> <Chip key={sec} active={state.targetSec===sec} label={toMMSS(sec)} onClick={()=> setTarget(sec)} />)}<input className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 w-28" type="number" min={90} max={480} value={state.targetSec} onChange={e=> setTarget(+e.target.value)} /><span className="opacity-70 self-center text-sm">sec</span></div></div></div>
+      <Section title="Tempo & Target Length / Length Mode">
+        <div className="grid lg:grid-cols-3 gap-8 items-start">
+          <div>
+            <label className="block mb-2 text-sm opacity-80">BPM</label>
+            <input type="range" min={70} max={150} value={state.bpm} onChange={e=> setBpm(+e.target.value)} className="w-full" />
+            <div className="mt-2 text-lg">{state.bpm} bpm</div>
+          </div>
+          <div>
+            <label className="block mb-2 text-sm opacity-80">Target Length</label>
+            <div className="flex gap-2 flex-wrap">{[180,210,230,240,270].map(sec=> <Chip key={sec} active={state.targetSec===sec} label={toMMSS(sec)} onClick={()=> setTarget(sec)} />)}
+              <input className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 w-28" type="number" min={90} max={480} value={state.targetSec} onChange={e=> setTarget(+e.target.value)} />
+              <span className="opacity-70 self-center text-sm">sec</span>
+            </div>
+          </div>
+          <div>
+            <label className="block mb-2 text-sm opacity-80">Length Mode (단일 저장)</label>
+            <div className="flex gap-2 flex-wrap">
+              {(['short','long'] as LengthMode[]).map(m=> <Chip key={m} label={m==='short'? 'Short (≤200c)' : 'Long (Narrative)'} active={state.lengthMode===m} onClick={()=> setState(s=> ({...s,lengthMode:m}))} />)}
+            </div>
+            <div className="mt-2 text-xs text-neutral-400 leading-relaxed">
+              Short: 200자 이내 고밀도 프롬프트 (압축). Long: 더 서술적인 형태(최대 표시 {charLimit}자 권장) — 저장 시 하나만 기록.
+            </div>
+          </div>
+        </div>
       </Section>
       <Section title="Era">
         <div className="flex flex-wrap gap-3">{ERAS.map(t=> <Chip key={t} label={t} active={state.era===t} onClick={()=> setState(s=> ({...s,era:t}))} />)}</div>
@@ -272,7 +301,48 @@ export default function FunkNaturalPage(){
       <div className="flex justify-between"><button className="px-5 py-3 rounded-2xl bg-neutral-800 border border-neutral-700" onClick={()=> setStep(2)}>← 이전</button><button className="px-5 py-3 rounded-2xl bg-indigo-600" onClick={()=> setStep(4)}>다음 →</button></div>
     </div>}
     {step===4 && <div className="space-y-8"><Section title="Mood"><div className="flex flex-wrap gap-3">{MOODS.map(m=> <Chip key={m} label={m} active={state.mood.includes(m)} onClick={()=> setState(s=> ({...s,mood: toggleChip(s.mood,m)}))} />)}</div></Section><Section title="FX"><div className="flex flex-wrap gap-3">{FX.map(f=> <Chip key={f} label={f} active={state.fx.includes(f)} onClick={()=> setState(s=> ({...s,fx: toggleChip(s.fx,f)}))} />)}</div></Section><div className="flex justify-between"><button className="px-5 py-3 rounded-2xl bg-neutral-800 border border-neutral-700" onClick={()=> setStep(3)}>← 이전</button><button className="px-5 py-3 rounded-2xl bg-indigo-600" onClick={()=> setStep(5)}>결과 보기 →</button></div></div>}
-    {step===5 && <div className="space-y-6"><div className="grid md:grid-cols-3 gap-6"><div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4"><div className="text-sm opacity-80 mb-1">예상 길이</div><div className="text-2xl font-bold">{toMMSS(predictedSec)}</div><div className="text-xs opacity-60 mt-1">BPM & Hook 반복 기반</div></div><div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4"><div className="text-sm opacity-80 mb-1">Readable</div><div className="text-sm whitespace-pre-wrap break-words">{readable}</div><div className={`mt-2 text-xs ${readable.length>200?'text-red-400':'text-emerald-400'}`}>{readable.length} / 200</div><button className="mt-3 px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700" onClick={()=> copy(readable)}>복사</button></div><div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4"><div className="text-sm opacity-80 mb-1">Compressed</div><div className="text-sm whitespace-pre-wrap break-words">{compressed}</div><div className={`mt-2 text-xs ${compressed.length>200?'text-red-400':'text-emerald-400'}`}>{compressed.length} / 200</div><button className="mt-3 px-4 py-2 rounded-xl bg-indigo-600" onClick={()=> copy(compressed)}>복사</button></div></div><div className="flex gap-3 flex-wrap"><button className="px-5 py-3 rounded-2xl bg-neutral-800 border border-neutral-700" onClick={()=> setStep(4)}>← 수정</button></div></div>}
+    {step===5 && <div className="space-y-6">
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4">
+          <div className="text-sm opacity-80 mb-1">예상 길이</div>
+            <div className="text-2xl font-bold">{toMMSS(predictedSec)}</div>
+            <div className="text-xs opacity-60 mt-1">BPM & 구조 기반 추정</div>
+        </div>
+        <div className="md:col-span-2 bg-neutral-900/70 border border-neutral-800 rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="text-sm opacity-80">Final Prompt</div>
+            <span className="px-2 py-1 rounded bg-indigo-600 text-xs font-semibold">{state.lengthMode.toUpperCase()}</span>
+          </div>
+          <div className="text-xs text-neutral-400 mb-3 leading-relaxed">
+            {state.lengthMode==='short' ? '고밀도 단문(≤200자). 아래 내용이 그대로 저장됩니다.' : '서술형 확장 프롬프트. 연구/분석용 풍부한 정보 포함.'}
+          </div>
+          <div className="text-sm whitespace-pre-wrap break-words font-medium tracking-tight">
+            {finalPrompt}
+          </div>
+          <div className={`mt-3 text-xs ${finalPrompt.length>charLimit? 'text-red-400':'text-emerald-400'}`}>{finalPrompt.length} / {charLimit}{state.lengthMode==='long' && finalPrompt.length>charLimit? ' (권장 초과)': ''}</div>
+          <div className="mt-4 flex gap-3">
+            <button className="px-4 py-2 rounded-xl bg-indigo-600" onClick={()=> copy(finalPrompt)}>프롬프트 복사</button>
+            {state.lengthMode==='short' && <button className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700" onClick={()=> copy(readable)}>Readable 보기/복사</button>}
+          </div>
+          <details className="mt-5 group">
+            <summary className="cursor-pointer text-xs opacity-60 hover:opacity-100 transition">디버그 / 내부 형태</summary>
+            <div className="mt-3 grid md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <div className="font-semibold mb-1">Readable</div>
+                <div className="whitespace-pre-wrap break-words opacity-90">{readable}</div>
+                <div className="mt-1 opacity-60">{readable.length} chars</div>
+              </div>
+              <div>
+                <div className="font-semibold mb-1">Compressed (200c 알고리즘)</div>
+                <div className="whitespace-pre-wrap break-words opacity-90">{compressed}</div>
+                <div className="mt-1 opacity-60">{compressed.length} chars</div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+      <div className="flex gap-3 flex-wrap"><button className="px-5 py-3 rounded-2xl bg-neutral-800 border border-neutral-700" onClick={()=> setStep(4)}>← 수정</button></div>
+    </div>}
   </div></div>;
 }
 
