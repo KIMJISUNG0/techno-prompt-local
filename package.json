@@ -56,12 +56,17 @@
     "deps:check": "npm outdated || true",
     "deps:update": "npx npm-check-updates -u && npm install",
     "gcp:deploy": "npm run build && gcloud app deploy --quiet",
+    "gcp:deploy:run": "gcloud builds submit --region=us-central1 --config=cloudbuild.yaml .",
     "gcp:colab:generate": "tsx scripts/gcp/colab-bridge.ts",
     "gcp:logs": "gcloud app logs tail -s default",
-    "gcp:setup": "bash scripts/gcp/setup-music-analysis.sh",
+    "gcp:logs:run": "gcloud run logs tail techno-prompt --region=us-central1",
+    "gcp:setup": "powershell -ExecutionPolicy Bypass -File scripts/gcp/setup-complete.ps1",
+    "gcp:setup:bash": "bash scripts/gcp/setup-complete.sh",
+    "gcp:status": "gcloud run services describe techno-prompt --region=us-central1 --format='value(status.url)'",
     "gcp:music:init": "tsx scripts/gcp/music-firestore.ts",
     "gcp:music:analyze": "tsx scripts/gcp/music-vertex-ai.ts",
     "gcp:usage:report": "tsx scripts/gcp/usage-monitor.ts"
+    ,"gpt:context": "powershell -ExecutionPolicy Bypass -File scripts/make-gpt-context.ps1"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
