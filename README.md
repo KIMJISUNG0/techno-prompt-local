@@ -313,6 +313,59 @@ https://<host>/#g=techno+trance
 Legacy Techno 단일 전용 뷰와 Simple Mode 는 2025-10-03 기준 제거되었습니다. Quick / Portal Arranger / Progressive Composer 경로를 사용하세요.
 2) (추가 예정) `#g=techno&mode=legacy` 방식 지원 가능
 
+## Offline Prompt Logging (Serverless Mode)
+Fastify 오케스트레이터 없이 프롬프트를 로깅하고 분석 루프를 돌리는 최소 마찰 흐름:
+
+1. Funk Prompt Wizard Step5 에서 프롬프트 구성 → "로컬 기록 (Offline)" 클릭 (localStorage 큐 저장)
+2. 여러 개 누적 후 "Export (.jsonl)" → Google Drive 동기화 폴더(예: `My Drive/TECHNO_PROMPT_MEMORY/exports/`)
+3. Colab Merge 셀 실행 (exports/*.jsonl → `memory/records/prompts.jsonl` 병합 & 커밋)
+4. VS Code 에서 `git pull` → 확인 후 필요 시 push
+5. (선택) 오디오 생성 & rename → 분석 셀 → summary.json 커밋 → pull → 다음 프롬프트
+
+JSONL 한 줄 예:
+```json
+{"hash":"9cd2139c","ts":"2025-10-05T09:33:12.123Z","bpm":106,"mode":"short","text":"Funk ...","filenamePrefix":"20251005T093312Z__short__9cd2139c__106bpm"}
+```
+
+### Colab Merge 셀(요약 코드 스니펫)
+Added / dup / conflict / bad 카운트를 출력, 새 레코드만 append 후 커밋 (push 는 VS Code 에서 수동).
+
+### 큐 관리
+- "큐 미리보기": 최근 저장 목록 확인
+- "큐 비우기": Export 후 초기화(실수 방지를 위해 Export 복수회 권장)
+
+## Suno Download Auto-Watcher (Windows PowerShell)
+Suno 또는 유사 서비스에서 막 내려받은 `.mp3/.wav` 를 자동으로 표준 prefix + 버전번호(`__v1`, `__v2` ...)로 INBOX 폴더에 복사하고 동일 prefix 의 `.prompt.txt` 를 생성.
+
+### 설치
+이미 `scripts/watch_suno.ps1` 포함.
+
+### 1) 초기 설정
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\watch_suno.ps1 -Setup
+```
+프롬프트: INBOX 경로 / 다운로드 폴더 / Wizard 에서 복사한 파일 Prefix / 프롬프트 텍스트 입력.
+
+### 2) Prefix 또는 Prompt 갱신
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\watch_suno.ps1 -SetPrefix "20251005T084338Z__long__e27274f__106bpm"
+powershell -ExecutionPolicy Bypass -File scripts\watch_suno.ps1 -SetPrompt (Get-Content .\final_prompt.txt -Raw)
+```
+
+### 3) 감시 실행
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\watch_suno.ps1 -Run
+```
+다운로드 발생 시: `<prefix>__v1.mp3` + `<prefix>__v1.prompt.txt` 식으로 누적.
+
+### 주의
+- mp3 와 wav 을 동시에 받을 경우 v 번호가 개별 증가.
+- 완전 표준 파일명(`prefix + 확장자`)만 필요하면 한 번에 한 포맷만 사용하거나 후처리에서 `__vN` 제거 후 최종 해시 명명 규칙으로 재정렬.
+
+## macOS / Linux 간단 폴링 스크립트 (선택)
+`watch_suno.sh` 예시(README 상단 설명 참조)로 2초 간격 Downloads 폴더 폴링.
+
+
 ## Render 배포 가이드
 
 ### 1) Static Site (권장)
