@@ -1,0 +1,54 @@
+[
+  {
+    "file": "20251005T012353Z__long__5ba0684d__95bpm.mp3",
+    "full": "C:\\Users\\slvje\\Downloads\\techno-prompt-main\\memory\\audio\\20251005T012353Z__long__5ba0684d__95bpm.mp3",
+    "resolvedHash": "5ba0684d",
+    "status": "prompt_log:MISSING|summary:MISS",
+    "bpmSuggested": null,
+    "mode": "short",
+    "suggestName": "20251005T065706Z__short__5ba0684d__???bpm.mp3",
+    "patch": null,
+    "promptKnown": false,
+    "promptLength": null,
+    "renamed": false
+  },
+  {
+    "file": "20251005T012353Z__long__5ba0684d__95bpm.wav",
+    "full": "C:\\Users\\slvje\\Downloads\\techno-prompt-main\\memory\\audio\\20251005T012353Z__long__5ba0684d__95bpm.wav",
+    "resolvedHash": "5ba0684d",
+    "status": "prompt_log:MISSING|summary:MISS",
+    "bpmSuggested": null,
+    "mode": "short",
+    "suggestName": "20251005T065706Z__short__5ba0684d__???bpm.wav",
+    "patch": null,
+    "promptKnown": false,
+    "promptLength": null,
+    "renamed": false
+  },
+  {
+    "file": "Can't Get Enough (Of Your Stuff).mp3",
+    "full": "C:\\Users\\slvje\\Downloads\\techno-prompt-main\\memory\\audio\\Can't Get Enough (Of Your Stuff).mp3",
+    "resolvedHash": "1ca8f806",
+    "status": "hash:UNDETECTED|summary:nameMatch|prompt_log:MISSING|RENAMED",
+    "bpmSuggested": 112,
+    "mode": "short",
+    "suggestName": "20251005T065706Z__short__1ca8f806__112bpm.mp3",
+    "patch": "Tempo within ±2.5 BPM; keep steady pocket.; keep dynamics natural",
+    "promptKnown": false,
+    "promptLength": null,
+    "renamed": true
+  },
+  {
+    "file": "Can't Get Enough (Of Your Stuff).wav",
+    "full": "C:\\Users\\slvje\\Downloads\\techno-prompt-main\\memory\\audio\\Can't Get Enough (Of Your Stuff).wav",
+    "resolvedHash": "f80b56da",
+    "status": "hash:UNDETECTED|summary:nameMatch|prompt_log:MISSING|RENAMED",
+    "bpmSuggested": 112,
+    "mode": "short",
+    "suggestName": "20251005T065706Z__short__f80b56da__112bpm.wav",
+    "patch": "Tempo within ±2.5 BPM; keep steady pocket.; keep dynamics natural",
+    "promptKnown": false,
+    "promptLength": null,
+    "renamed": true
+  }
+]

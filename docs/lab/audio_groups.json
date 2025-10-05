@@ -1,0 +1,77 @@
+[
+  {
+    "hash": "1ca8f806",
+    "variants": [
+      {
+        "file": "20251005T065706Z__short__1ca8f806__112bpm.mp3",
+        "ext": "mp3",
+        "iso": "20251005T065706Z",
+        "bpm": 112
+      }
+    ],
+    "modeGuess": "short",
+    "bpmGuess": 112,
+    "canonical": {
+      "file": "20251005T065706Z__short__1ca8f806__112bpm.mp3",
+      "ext": "mp3",
+      "iso": "20251005T065706Z",
+      "bpm": 112
+    },
+    "promptLogged": false,
+    "inSummary": true,
+    "inMetrics": true,
+    "orphan": true
+  },
+  {
+    "hash": "5ba0684d",
+    "variants": [
+      {
+        "file": "20251005T012353Z__long__5ba0684d__95bpm.wav",
+        "ext": "wav",
+        "iso": "20251005T012353Z",
+        "bpm": 95
+      },
+      {
+        "file": "20251005T012353Z__long__5ba0684d__95bpm.mp3",
+        "ext": "mp3",
+        "iso": "20251005T012353Z",
+        "bpm": 95
+      }
+    ],
+    "modeGuess": "long",
+    "bpmGuess": 95,
+    "canonical": {
+      "file": "20251005T012353Z__long__5ba0684d__95bpm.wav",
+      "ext": "wav",
+      "iso": "20251005T012353Z",
+      "bpm": 95
+    },
+    "promptLogged": false,
+    "inSummary": false,
+    "inMetrics": false,
+    "orphan": false
+  },
+  {
+    "hash": "f80b56da",
+    "variants": [
+      {
+        "file": "20251005T065706Z__short__f80b56da__112bpm.wav",
+        "ext": "wav",
+        "iso": "20251005T065706Z",
+        "bpm": 112
+      }
+    ],
+    "modeGuess": "short",
+    "bpmGuess": 112,
+    "canonical": {
+      "file": "20251005T065706Z__short__f80b56da__112bpm.wav",
+      "ext": "wav",
+      "iso": "20251005T065706Z",
+      "bpm": 112
+    },
+    "promptLogged": false,
+    "inSummary": true,
+    "inMetrics": true,
+    "orphan": true
+  }
+]

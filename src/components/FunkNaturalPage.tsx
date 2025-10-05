@@ -161,6 +161,11 @@ function buildTotalBars(b:BuildState){
 export default function FunkNaturalPage(){
   const [step,setStep]=useState<Step>(1);
   const [state,setState]=useState<PromptState>(()=>{ const s={...defaultState}; s.arrangement.reinstrument.repeats=calcRepeats(s.bpm,s.targetSec,s.arrangement.reinstrument.hookBars,s.meterTop); return s; });
+  // ==== 분석 피드백 상태 (Colab 산출물 docs/lab/*) ====
+  const [analysisLoading,setAnalysisLoading] = useState(false);
+  const [analysisError,setAnalysisError] = useState<string>('');
+  const [analysisEntry,setAnalysisEntry] = useState<any>(null);
+  const [analysisPatch,setAnalysisPatch] = useState<string[]>([]);
 
   const predictedSec = useMemo(()=>{
     switch(state.arrangement.mode){
@@ -184,6 +189,39 @@ export default function FunkNaturalPage(){
   const [logging,setLogging] = useState(false);
   const [logError,setLogError] = useState<string>('');
   const [loggedTs,setLoggedTs] = useState<string>('');
+  // 분석 데이터 로더: Step 5 진입 시 혹은 hash 확정 시 1회 시도
+  useEffect(()=>{
+    if(step!==5) return; // Step5에서만
+    const targetHash = serverHash || promptHash; // 서버 hash 우선
+    if(!targetHash) return;
+    let cancelled=false;
+    async function load(){
+      setAnalysisLoading(true); setAnalysisError(''); setAnalysisEntry(null); setAnalysisPatch([]);
+      try {
+        // summary.json & next_prompts.json 병렬 로드
+        const basePaths = ['/docs/lab/summary.json','/docs/lab/next_prompts.json'];
+        const [summaryRes, patchRes] = await Promise.all(basePaths.map(p=> fetch(p, { cache:'no-store' } )));
+        if(!summaryRes.ok) throw new Error('summary.json '+summaryRes.status);
+        const summaryJson: any[] = await summaryRes.json();
+        let patchJson: any[] = [];
+  if(patchRes.ok){ try { patchJson = await patchRes.json(); } catch { /* ignore */ void 0; } }
+        const found = summaryJson.find(r=> r.hash === targetHash);
+        const patchObj = patchJson.find(r=> r.hash === targetHash);
+        if(!cancelled && found){ setAnalysisEntry(found); }
+        if(!cancelled && patchObj && patchObj.patch){
+          const lines = String(patchObj.patch).split(/;|\n/).map(l=> l.trim()).filter(l=> l.length>0);
+          setAnalysisPatch(lines);
+        }
+        if(!found){
+          setAnalysisError('해당 해시 분석 레코드 없음 (Colab 아직 미반영)');
+        }
+      } catch(e:any){
+        if(!cancelled) setAnalysisError(e.message||'분석 로드 실패');
+      } finally { if(!cancelled) setAnalysisLoading(false); }
+    }
+    load();
+    return ()=> { cancelled=true; };
+  },[step, serverHash, promptHash]);
   useEffect(()=>{
     let cancelled=false;
     async function doHash(){
@@ -217,27 +255,35 @@ export default function FunkNaturalPage(){
       if(envBase) guessList.push(envBase.replace(/\/$/,''));
       if(typeof window!=='undefined'){
         if(window.location.port==='5173') guessList.push('http://localhost:4000');
-        // Try same origin (reverse proxy scenario)
         guessList.push(window.location.origin);
       }
-      // Deduplicate
       const bases = Array.from(new Set(guessList));
       let lastErr: string | null = null; let json: any = null;
       for(const base of bases){
-        try {
-          // ping first
+        // 최대 2회 (ping 실패 시 재시도 1회) -> strict → loose 순서
+        for(let attempt=0; attempt<2 && !json; attempt++){
+          try {
             const ping = await fetch(base + '/lab/prompt-log/ping',{ method:'GET', cache:'no-store'});
-            if(!ping.ok) throw new Error('ping '+ping.status);
-            const res = await fetch(base + '/lab/prompt-log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: finalPrompt, bpm: state.bpm, mode: state.lengthMode }) });
-            const raw = await res.text();
-            if(!res.ok) throw new Error(`[${res.status}] ${raw.slice(0,160)}`);
-            try { json = raw ? JSON.parse(raw) : null; } catch { throw new Error('Non-JSON response from '+base+': '+ raw.slice(0,120)); }
-            if(json?.ok){ break; }
-            lastErr = 'no ok flag from '+base;
-        } catch(e:any){ lastErr = e.message; json = null; continue; }
+            if(!ping.ok) { if(attempt===1) throw new Error('ping '+ping.status); else { await new Promise(r=> setTimeout(r,400)); continue; } }
+            // STRICT 시도
+            const strictRes = await fetch(base + '/lab/prompt-log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: finalPrompt, bpm: state.bpm, mode: state.lengthMode }) });
+            let raw = await strictRes.text();
+            if(strictRes.ok){ json = raw? JSON.parse(raw):null; if(json?.ok) break; }
+            else if(strictRes.status===400 && /invalid_json|Bad escaped|Expected property/.test(raw)){
+              // LOOSE fallback
+              const looseRes = await fetch(base + '/lab/prompt-log/loose',{ method:'POST', headers:{'Content-Type':'text/plain'}, body: `${finalPrompt};${state.bpm};${state.lengthMode}` });
+              raw = await looseRes.text();
+              if(!looseRes.ok) throw new Error(`[${looseRes.status}] ${raw.slice(0,140)}`);
+              json = raw? JSON.parse(raw):null;
+              if(!json?.ok) throw new Error('loose no ok flag');
+            } else {
+              if(!strictRes.ok) throw new Error(`[${strictRes.status}] ${raw.slice(0,140)}`);
+            }
+          } catch(e:any){ lastErr = e.message; json = null; }
+        }
+        if(json?.ok) break;
       }
-      if(!json) throw new Error(lastErr || 'all bases failed');
-      if(!json?.ok) throw new Error(json?.error||'unknown');
+      if(!json?.ok) throw new Error(lastErr || 'all bases failed');
       setServerHash(json.hash);
       setServerFilenamePrefix(json.filenamePrefix);
       setLoggedTs(json.record?.ts || new Date().toISOString());
@@ -414,6 +460,69 @@ export default function FunkNaturalPage(){
               <div className="font-semibold">Colab</div>
               <pre className="whitespace-pre-wrap break-words text-[10px] leading-tight font-mono opacity-80 max-h-40 overflow-auto">{colabSnippet}</pre>
             </div>
+          </div>
+          {/* === 분석 피드백 블록 === */}
+          <div className="mt-8 bg-neutral-900/70 border border-neutral-800 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <h4 className="text-sm font-semibold">분석 피드백 (Colab)</h4>
+              {analysisLoading && <span className="text-xs text-indigo-400 animate-pulse">불러오는 중...</span>}
+              {!analysisLoading && !analysisError && analysisEntry && <span className="text-xs text-emerald-400">동기화됨</span>}
+              {!analysisLoading && analysisError && <span className="text-xs text-red-400">오류</span>}
+              <button onClick={()=> { // 수동 새로고침
+                setAnalysisError(''); setAnalysisEntry(null); setAnalysisPatch([]); setStep(5); // 동일 step 재트리거 위해 강제 hash 변화 없으니 직접 호출
+                (async ()=> {
+                  const targetHash = serverHash || promptHash; if(!targetHash) return;
+                  setAnalysisLoading(true); setAnalysisError('');
+                  try {
+                    const [summaryRes, patchRes] = await Promise.all([
+                      fetch('/docs/lab/summary.json',{cache:'no-store'}),
+                      fetch('/docs/lab/next_prompts.json',{cache:'no-store'})
+                    ]);
+                    if(!summaryRes.ok) throw new Error('summary.json '+summaryRes.status);
+                    const summaryJson:any[] = await summaryRes.json();
+                    let patchJson:any[] = []; if(patchRes.ok){ try { patchJson = await patchRes.json(); } catch { /* ignore */ void 0; } }
+                    const found = summaryJson.find(r=> r.hash === targetHash);
+                    const patchObj = patchJson.find(r=> r.hash === targetHash);
+                    if(found) setAnalysisEntry(found); else setAnalysisError('해시 분석 레코드 없음');
+                    if(patchObj?.patch){ setAnalysisPatch(String(patchObj.patch).split(/;|\n/).map(l=> l.trim()).filter(l=> l)); }
+                  } catch(e:any){ setAnalysisError(e.message||'로드 실패'); }
+                  finally { setAnalysisLoading(false); }
+                })();
+              }} className="text-xs px-2 py-1 rounded bg-neutral-800 border border-neutral-700 hover:border-neutral-500">새로고침</button>
+            </div>
+            {analysisError && <div className="text-xs text-red-400 mb-2">{analysisError}</div>}
+            {!analysisError && !analysisEntry && !analysisLoading && <div className="text-xs opacity-60">분석 레코드를 찾지 못했습니다. (Colab 결과 push 대기)</div>}
+            {analysisEntry && <div className="space-y-4">
+              <div className="grid md:grid-cols-4 gap-4 text-xs">
+                <div className="bg-neutral-950/50 border border-neutral-800 rounded-lg p-3 space-y-1">
+                  <div className="opacity-60">해시</div>
+                  <div className="font-mono text-emerald-400 text-sm">{analysisEntry.hash}</div>
+                </div>
+                <div className="bg-neutral-950/50 border border-neutral-800 rounded-lg p-3 space-y-1">
+                  <div className="opacity-60">추정 Tempo</div>
+                  <div className="font-semibold">{analysisEntry.tempo_librosa?.toFixed(2)} bpm</div>
+                  <div className="text-[10px] opacity-60">목표 {state.bpm} bpm | Δ {(analysisEntry.tempo_librosa? Math.abs(analysisEntry.tempo_librosa - state.bpm).toFixed(2):'--')}</div>
+                </div>
+                <div className="bg-neutral-950/50 border border-neutral-800 rounded-lg p-3 space-y-1">
+                  <div className="opacity-60">LUFS</div>
+                  <div className="font-semibold">{analysisEntry.lufs? analysisEntry.lufs.toFixed(2): '--'}</div>
+                  <div className="text-[10px] opacity-60">(더 밝은 일관성 목표 -16 ±2)</div>
+                </div>
+                <div className="bg-neutral-950/50 border border-neutral-800 rounded-lg p-3 space-y-1">
+                  <div className="opacity-60">Spectral Centroid</div>
+                  <div className="font-semibold">{analysisEntry.spectral_centroid? Math.round(analysisEntry.spectral_centroid): '--'}</div>
+                  <div className="text-[10px] opacity-60">(밸런스 감시)</div>
+                </div>
+              </div>
+              {analysisPatch.length>0 && <div className="mt-2">
+                <div className="text-xs font-semibold mb-1">다음 개선 패치 제안</div>
+                <ul className="list-disc pl-5 space-y-1 text-[11px]">
+                  {analysisPatch.map((p,i)=><li key={i} className="leading-snug">{p}</li>)}
+                </ul>
+              </div>}
+              {analysisPatch.length===0 && <div className="text-[11px] opacity-60">패치 제안 없음 또는 안정 범위 내</div>}
+              <div className="text-[10px] opacity-50 pt-2 border-t border-neutral-800">Colab 기반 지표. 새 오디오 업로드 & 재분석 후 git push 하면 갱신.</div>
+            </div>}
           </div>
           <details className="mt-5 group">
             <summary className="cursor-pointer text-xs opacity-60 hover:opacity-100 transition">디버그 / 내부 형태</summary>

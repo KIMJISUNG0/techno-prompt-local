@@ -35,6 +35,8 @@
   "prompt:log": "tsx scripts/log-prompt.ts",
   "retro:log-rename": "tsx scripts/retro-log-rename.ts",
   "audio:analyze": "tsx scripts/analyze-audio.ts",
+  "audio:auto-detect": "tsx scripts/auto-detect-audio.ts",
+  "audio:group": "tsx scripts/audio-group-by-hash.ts",
     "dev:worker:local": "tsx workers/local/worker.ts",
     "queue:demo": "tsx orchestrator/demo-enqueue.ts",
     "dev:redis": "docker run --name redis-dev -p 6379:6379 -d redis:7-alpine || echo 'Redis already running'",

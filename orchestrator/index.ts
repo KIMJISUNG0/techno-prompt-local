@@ -140,6 +140,59 @@ app.addHook('onSend', async (req, reply, payload) => {
     }
   });
 
+  // Loose endpoint: 허용 범위 확대 (PowerShell 잘못된 JSON / form-style / raw text) → 내부적으로 복구 시도
+  app.post('/lab/prompt-log/loose', async (req, reply) => {
+    try {
+      let raw: any = (req as any).body;
+      let obj: any = {};
+      if (typeof raw === 'object' && raw !== null) {
+        obj = raw;
+      } else if (typeof raw === 'string') {
+        const s = raw.trim();
+        // 1) JSON 시도
+        try { obj = JSON.parse(s); } catch {
+          // 2) form key=value&key=value
+          if(/=/.test(s) && /&|=/.test(s)) {
+            const tmp: any = {};
+            for (const part of s.split('&')) {
+              const [k,v] = part.split('=');
+              if(k) tmp[decodeURIComponent(k)] = decodeURIComponent((v||'').replace(/\+/g,' '));
+            }
+            obj = tmp;
+          } else {
+            // 3) 세미콜론 구분 text;bpm;mode
+            const seg = s.split(';').map(x=> x.trim());
+            if(seg.length >= 3) {
+              obj = { text: seg[0], bpm: seg[1], mode: seg[2] };
+            } else {
+              // 4) 단순 문자열 → text 로 보고 기본 bpm 100
+              obj = { text: s, bpm: 100, mode: 'short' };
+            }
+          }
+        }
+      }
+      const text: string = obj.text;
+      const bpm: number = Number(obj.bpm);
+      const mode: string = obj.mode === 'long' ? 'long' : 'short';
+      if(!text || !text.trim()) { reply.code(400); return { error: 'missing text' }; }
+      if(!bpm || !Number.isFinite(bpm)) { reply.code(400); return { error: 'invalid bpm' }; }
+      const { createHash } = await import('node:crypto');
+      const hash = createHash('sha1').update(text,'utf8').digest('hex').slice(0,8);
+      const ts = new Date().toISOString();
+      const rec = { ts, mode, bpm, hash, length: text.length, text, version: 1 };
+      const path = await import('node:path');
+      const fs = await import('node:fs');
+      const dir = path.join(process.cwd(),'memory','records');
+      if(!fs.existsSync(dir)) fs.mkdirSync(dir,{recursive:true});
+      const file = path.join(dir,'prompts.jsonl');
+      fs.appendFileSync(file, JSON.stringify(rec)+'\n','utf8');
+      const filenamePrefix = ts.replace(/[-:]/g,'').replace(/\..+/,'Z')+`__${mode}__${hash}__${bpm}bpm`;
+      return { ok:true, hash, filenamePrefix, record: rec, loose: true };
+    } catch(e:any){
+      reply.code(500); return { error: e.message, loose: true };
+    }
+  });
+
   // Lightweight ping for front-end multi-endpoint fallback detection
   app.get('/lab/prompt-log/ping', async (_req, _rep) => {
     return { ok: true, service: 'orchestrator', route: '/lab/prompt-log' };
@@ -434,6 +487,15 @@ app.get('/self-test', async () => {
 });
 
   const port = Number(process.env.PORT) || Number(process.env.ORCH_PORT) || 4000;
+
+  // 에러 핸들러: /lab/prompt-log JSON 파싱 오류를 명확한 JSON 구조로 래핑
+  app.setErrorHandler((err, req, reply) => {
+    if (req.url.startsWith('/lab/prompt-log') && err instanceof SyntaxError) {
+      reply.code(400).send({ error:'invalid_json', detail: err.message });
+      return;
+    }
+    reply.send(err);
+  });
   app
     .listen({ port, host: '0.0.0.0' })
     .then(() => app.log.info(`Orchestrator listening on :${port}`))

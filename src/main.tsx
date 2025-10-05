@@ -33,7 +33,7 @@ const FunkNaturalPage = React.lazy(()=> import('./components/FunkNaturalPage'));
       window.location.hash = '/'+h.slice(1);
       return;
     }
-  } catch {/* ignore */}
+  } catch { /* ignore */ void 0; }
 })();
 
 // Pre-parse hash for shareable genre selection (#g=genre1+genre2)
@@ -49,7 +49,7 @@ const FunkNaturalPage = React.lazy(()=> import('./components/FunkNaturalPage'));
         (window as any).__pickedGenres = list;
       }
     }
-  } catch { /* ignore hash parse errors */ }
+  } catch { /* ignore hash parse errors */ void 0; }
 })();
 
 // Simple theme mode hook with persistence + prefers-color-scheme fallback
@@ -138,7 +138,6 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     return { hasError: true, err };
   }
   componentDidCatch(err:any, info:any){
-    // eslint-disable-next-line no-console
     console.error('[ErrorBoundary]', err, info);
   }
   render(){
