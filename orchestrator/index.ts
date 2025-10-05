@@ -114,6 +114,31 @@ app.addHook('onSend', async (req, reply, payload) => {
   await registerDevCouncilRoutes(app);
   await registerMetricsRoutes(app);
   registerMusicNaturalRoutes(app);
+  // Lightweight lab prompt logging endpoint (mirrors scripts/log-prompt.ts logic)
+  app.post('/lab/prompt-log', async (req, reply) => {
+    try {
+      const body: any = req.body || {};
+      const text: string = body.text;
+      const bpm: number = Number(body.bpm);
+      const mode: string = body.mode === 'long' ? 'long' : 'short';
+      if(!text || !text.trim()) { reply.code(400); return { error: 'missing text' }; }
+      if(!bpm || !Number.isFinite(bpm)) { reply.code(400); return { error: 'invalid bpm' }; }
+      const { createHash } = await import('node:crypto');
+      const hash = createHash('sha1').update(text,'utf8').digest('hex').slice(0,8);
+      const ts = new Date().toISOString();
+      const rec = { ts, mode, bpm, hash, length: text.length, text, version: 1 };
+      const path = await import('node:path');
+      const fs = await import('node:fs');
+      const dir = path.join(process.cwd(),'memory','records');
+      if(!fs.existsSync(dir)) fs.mkdirSync(dir,{recursive:true});
+      const file = path.join(dir,'prompts.jsonl');
+      fs.appendFileSync(file, JSON.stringify(rec)+'\n','utf8');
+      const filenamePrefix = ts.replace(/[-:]/g,'').replace(/\..+/,'Z')+`__${mode}__${hash}__${bpm}bpm`;
+      return { ok:true, hash, filenamePrefix, record: rec };
+    } catch (e:any) {
+      reply.code(500); return { error: e.message };
+    }
+  });
 
   // Simple per-request timing log
   app.addHook('onRequest', (req, _reply, done) => {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 // lengthMode 추가: 'short'는 200자 압축 버전(compressed)을 최종 저장/복사 대상으로 사용
 // 'long'은 readable 서술형을 최종 프롬프트로 사용 (compressed는 참고/디버그 용도)
 
@@ -175,6 +175,52 @@ export default function FunkNaturalPage(){
   const compressed = useMemo(()=> composeCompressed(state),[state]);
   const charLimit = state.lengthMode==='short'? 200 : 600; // long은 느슨한 권장 한도(표시용)
   const finalPrompt = state.lengthMode==='short' ? compressed : readable; // 저장/복사 대상 단일화
+  // Hash (sha1 8) client-side – matches scripts/log-prompt.ts + /lab/prompt-log
+  // Browser-side SHA-1 (first 8 hex) using Web Crypto (async) with synchronous cached state
+  const [promptHash,setPromptHash] = useState<string>('');
+  const [serverHash,setServerHash] = useState<string>('');
+  const [serverFilenamePrefix,setServerFilenamePrefix] = useState<string>('');
+  const [logging,setLogging] = useState(false);
+  const [logError,setLogError] = useState<string>('');
+  const [loggedTs,setLoggedTs] = useState<string>('');
+  useEffect(()=>{
+    let cancelled=false;
+    async function doHash(){
+      try {
+        const enc = new TextEncoder().encode(finalPrompt);
+        const buf = await crypto.subtle.digest('SHA-1', enc);
+        const arr = Array.from(new Uint8Array(buf)).map(b=> b.toString(16).padStart(2,'0')).join('');
+        if(!cancelled) setPromptHash(arr.slice(0,8));
+      } catch {
+        // Fallback trivial hash (not cryptographic) if subtle unsupported
+        let h=0; for(let i=0;i<finalPrompt.length;i++){ h = (h*31 + finalPrompt.charCodeAt(i))>>>0; }
+        if(!cancelled) setPromptHash(h.toString(16).slice(0,8).padStart(8,'0'));
+      }
+    }
+    doHash();
+    return ()=>{cancelled=true;};
+  },[finalPrompt]);
+  const isoTs = useMemo(()=> new Date().toISOString(),[]); // page load time baseline
+  const filenamePrefixLocal = `${isoTs.replace(/[-:]/g,'').replace(/\..+/,'Z')}__${state.lengthMode}__${promptHash}__${state.bpm}bpm`;
+  const filenamePrefix = serverFilenamePrefix || filenamePrefixLocal;
+  const fullFilenameMp3 = filenamePrefix + '.mp3';
+  const fullFilenameWav = filenamePrefix + '.wav';
+
+  const colabSnippet = useMemo(()=> `# --- Paste into Colab cell ---\nPROMPT_TEXT = ${JSON.stringify(finalPrompt)}\nPROMPT_HASH = '${serverHash || promptHash}'\nBPM = ${state.bpm}\nMODE = '${state.lengthMode}'\n# Expected audio filenames (upload then run analysis):\n# ${fullFilenameMp3}\n# ${fullFilenameWav}\n# After generation, rename your exported files accordingly before upload.\n`,[finalPrompt,promptHash,serverHash,state.bpm,state.lengthMode,fullFilenameMp3,fullFilenameWav]);
+
+  async function logToServer(){
+    setLogging(true); setLogError('');
+    try {
+      const res = await fetch('/lab/prompt-log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: finalPrompt, bpm: state.bpm, mode: state.lengthMode }) });
+      if(!res.ok){ const t = await res.text(); throw new Error(t||'HTTP '+res.status); }
+      const json = await res.json();
+      if(!json?.ok) throw new Error(json?.error||'unknown');
+      setServerHash(json.hash);
+      setServerFilenamePrefix(json.filenamePrefix);
+      setLoggedTs(json.record?.ts || new Date().toISOString());
+    } catch(e:any){ setLogError(e.message); }
+    finally { setLogging(false); }
+  }
 
   const toggleChip = (arr:string[], val:string)=> arr.includes(val)? arr.filter(v=> v!==val): [...arr,val];
   const setBpm = (v:number)=> setState(s=> ({...s,bpm:clamp(Math.round(v),60,160)}));
@@ -320,9 +366,30 @@ export default function FunkNaturalPage(){
             {finalPrompt}
           </div>
           <div className={`mt-3 text-xs ${finalPrompt.length>charLimit? 'text-red-400':'text-emerald-400'}`}>{finalPrompt.length} / {charLimit}{state.lengthMode==='long' && finalPrompt.length>charLimit? ' (권장 초과)': ''}</div>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex gap-3 flex-wrap">
             <button className="px-4 py-2 rounded-xl bg-indigo-600" onClick={()=> copy(finalPrompt)}>프롬프트 복사</button>
             {state.lengthMode==='short' && <button className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700" onClick={()=> copy(readable)}>Readable 보기/복사</button>}
+            <button className="px-4 py-2 rounded-xl bg-neutral-700 border border-neutral-600" onClick={()=> copy(filenamePrefix)}>파일 Prefix 복사</button>
+            <button className="px-4 py-2 rounded-xl bg-neutral-700 border border-neutral-600" onClick={()=> copy(colabSnippet)}>Colab 스니펫 복사</button>
+            <button disabled={logging} className={`px-4 py-2 rounded-xl ${serverFilenamePrefix? 'bg-emerald-600':'bg-fuchsia-600'} disabled:opacity-50`} onClick={logToServer}>{logging? '기록 중...' : serverFilenamePrefix? '서버 기록 완료' : '서버 기록 + Prefix 확정'}</button>
+          </div>
+          {serverFilenamePrefix && <div className="mt-2 text-xs text-emerald-400">Logged @ {new Date(loggedTs).toLocaleTimeString()} / hash {serverHash}</div>}
+          {logError && <div className="mt-2 text-xs text-red-400">로그 실패: {logError}</div>}
+          <div className="mt-6 grid md:grid-cols-3 gap-4 text-xs">
+            <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-3 space-y-1">
+              <div className="font-semibold">Hash</div>
+              <div className="font-mono text-emerald-400">{promptHash}</div>
+              <div className="opacity-60">sha1·8 (프롬프트 기반)</div>
+            </div>
+            <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-3 space-y-1">
+              <div className="font-semibold">파일 이름 예시</div>
+              <div className="font-mono break-all">{fullFilenameMp3}</div>
+              <div className="font-mono break-all">{fullFilenameWav}</div>
+            </div>
+            <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-3 space-y-2">
+              <div className="font-semibold">Colab</div>
+              <pre className="whitespace-pre-wrap break-words text-[10px] leading-tight font-mono opacity-80 max-h-40 overflow-auto">{colabSnippet}</pre>
+            </div>
           </div>
           <details className="mt-5 group">
             <summary className="cursor-pointer text-xs opacity-60 hover:opacity-100 transition">디버그 / 내부 형태</summary>
