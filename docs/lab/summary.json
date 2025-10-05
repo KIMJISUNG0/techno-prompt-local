@@ -1,0 +1,24 @@
+[
+    {
+        "filename": "20251005T012353Z__long__5ba0684d__95bpm.mp3",
+        "hash": "5ba0684d",
+        "lengthMode": "long",
+        "bpm_from_name": 95,
+        "tempo_est": 112.34714673913044,
+        "lufs": -17.301226403669947,
+        "rms_db": 0.13219651579856873,
+        "spectral_centroid": 3263.5254248884135,
+        "prompt_text": null
+    },
+    {
+        "filename": "20251005T012353Z__long__5ba0684d__95bpm.wav",
+        "hash": "5ba0684d",
+        "lengthMode": "long",
+        "bpm_from_name": 95,
+        "tempo_est": 117.45383522727273,
+        "lufs": -16.381674957905886,
+        "rms_db": 0.15418092906475067,
+        "spectral_centroid": 2669.5262511562996,
+        "prompt_text": null
+    }
+]
