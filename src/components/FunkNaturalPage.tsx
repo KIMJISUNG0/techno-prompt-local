@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Tone from 'tone';
 
 interface FunkState { loading: boolean; error?: string; text?: string; debug?: any; length?: number; }
 type SectionType = 'intro'|'verse'|'pre'|'hook'|'bridge'|'break'|'outro';
@@ -28,6 +29,67 @@ export default function FunkNaturalPage(){
     { id: 's4', section: 'hook', bars: 16 }
   ]);
   const [result, setResult] = React.useState<FunkState>({ loading:false });
+  // Metronome
+  const [metPlaying, setMetPlaying] = React.useState(false);
+  const [metBeat, setMetBeat] = React.useState(0);
+  const metEventRef = React.useRef<number | null>(null);
+  const highRef = React.useRef<Tone.Synth|null>(null);
+  const lowRef = React.useRef<Tone.Synth|null>(null);
+
+  // 초기 synth 준비 (지연 로딩)
+  React.useEffect(()=> {
+    if (!highRef.current) {
+      highRef.current = new Tone.Synth({ oscillator:{ type:'square' }, envelope:{ attack:0.001, decay:0.05, sustain:0.1, release:0.1 } }).toDestination();
+    }
+    if (!lowRef.current) {
+      lowRef.current = new Tone.Synth({ oscillator:{ type:'sine' }, envelope:{ attack:0.001, decay:0.05, sustain:0.05, release:0.05 } }).toDestination();
+    }
+    return () => {
+      if (metEventRef.current != null) Tone.Transport.clear(metEventRef.current);
+    };
+  }, []);
+
+  // BPM / Meter 변경 시 반영
+  React.useEffect(()=> {
+    Tone.Transport.bpm.value = bpm;
+    // timeSignature 설정 – 6/8은 (6,8)로, 나머지는 (n,4)
+    if (meter === '6/8') Tone.Transport.timeSignature = [6,8];
+    else Tone.Transport.timeSignature = [Number(meter[0]), 4];
+  }, [bpm, meter]);
+
+  function stopMetronome(){
+    if (metEventRef.current != null) {
+      Tone.Transport.clear(metEventRef.current);
+      metEventRef.current = null;
+    }
+    Tone.Transport.stop();
+    setMetPlaying(false);
+    setMetBeat(0);
+  }
+
+  async function toggleMetronome(){
+    if (metPlaying) { stopMetronome(); return; }
+    await Tone.start();
+    let beat = 0;
+    const beatsPerBar = meter==='6/8'?6: meter==='3/4'?3:4;
+    const interval = meter==='6/8' ? '8n' : '4n';
+    if (metEventRef.current != null) {
+      Tone.Transport.clear(metEventRef.current);
+      metEventRef.current = null;
+    }
+    metEventRef.current = Tone.Transport.scheduleRepeat((time)=> {
+      // 액센트 (첫 박) / 일반 박
+      if (beat % beatsPerBar === 0) {
+        highRef.current?.triggerAttackRelease('C6','16n', time);
+      } else {
+        lowRef.current?.triggerAttackRelease('C4','16n', time);
+      }
+      beat = (beat + 1) % beatsPerBar;
+      setMetBeat(beat);
+    }, interval);
+    Tone.Transport.start('+0.05');
+    setMetPlaying(true);
+  }
 
   // 유틸
   function toggle<T>(arr:T[], v:T, max?:number){
@@ -124,7 +186,19 @@ export default function FunkNaturalPage(){
           <label className="flex items-center gap-2 text-xs text-slate-400 mt-1">
             <input type="checkbox" checked={includeLen} onChange={e=>setIncludeLen(e.target.checked)} /> 길이 힌트 포함
           </label>
-          <div className="text-[11px] text-slate-500">예상 길이: {estMMSS} (bars {totalBars})</div>
+          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+            <span>예상 길이: {estMMSS} (bars {totalBars})</span>
+            <button type="button" onClick={toggleMetronome} className={(metPlaying?'bg-rose-500 text-black':'bg-slate-700 text-slate-300 hover:bg-slate-600')+ ' px-2 py-1 rounded'}>
+              {metPlaying ? '메트로놈 정지' : '메트로놈 재생'}
+            </button>
+            {metPlaying && (
+              <span className="flex items-center gap-1">
+                {Array.from({ length: meter==='6/8'?6: meter==='3/4'?3:4 }).map((_,i)=>(
+                  <span key={i} className={'w-2 h-2 rounded-full '+(i===metBeat? 'bg-amber-400': 'bg-slate-600')}></span>
+                ))}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
