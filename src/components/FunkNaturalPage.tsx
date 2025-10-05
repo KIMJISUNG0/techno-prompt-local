@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { upsertPrompt, exportAsJsonl, loadQueue, clearQueue, queueStats } from '../lib/offlineQueue';
 import './funk-wizard.css';
 // lengthMode 추가: 'short'는 200자 압축 버전(compressed)을 최종 저장/복사 대상으로 사용
 // 'long'은 readable 서술형을 최종 프롬프트로 사용 (compressed는 참고/디버그 용도)
@@ -184,11 +185,13 @@ export default function FunkNaturalPage(){
   // Hash (sha1 8) client-side – matches scripts/log-prompt.ts + /lab/prompt-log
   // Browser-side SHA-1 (first 8 hex) using Web Crypto (async) with synchronous cached state
   const [promptHash,setPromptHash] = useState<string>('');
+  // Offline logging state (serverless)
   const [serverHash,setServerHash] = useState<string>('');
   const [serverFilenamePrefix,setServerFilenamePrefix] = useState<string>('');
-  const [logging,setLogging] = useState(false);
+  const [logging,setLogging] = useState(false); // retained flag semantics
   const [logError,setLogError] = useState<string>('');
   const [loggedTs,setLoggedTs] = useState<string>('');
+  const [queueOpen,setQueueOpen] = useState(false);
   // 분석 데이터 로더: Step 5 진입 시 혹은 hash 확정 시 1회 시도
   useEffect(()=>{
     if(step!==5) return; // Step5에서만
@@ -247,48 +250,39 @@ export default function FunkNaturalPage(){
 
   const colabSnippet = useMemo(()=> `# --- Paste into Colab cell ---\nPROMPT_TEXT = ${JSON.stringify(finalPrompt)}\nPROMPT_HASH = '${serverHash || promptHash}'\nBPM = ${state.bpm}\nMODE = '${state.lengthMode}'\n# Expected audio filenames (upload then run analysis):\n# ${fullFilenameMp3}\n# ${fullFilenameWav}\n# After generation, rename your exported files accordingly before upload.\n`,[finalPrompt,promptHash,serverHash,state.bpm,state.lengthMode,fullFilenameMp3,fullFilenameWav]);
 
-  async function logToServer(){
+  // Offline log function (localStorage queue)
+  function logOffline(){
     setLogging(true); setLogError('');
     try {
-      const guessList: string[] = [];
-      const envBase = (import.meta as any).env?.VITE_ORCH_BASE;
-      if(envBase) guessList.push(envBase.replace(/\/$/,''));
-      if(typeof window!=='undefined'){
-        if(window.location.port==='5173') guessList.push('http://localhost:4000');
-        guessList.push(window.location.origin);
-      }
-      const bases = Array.from(new Set(guessList));
-      let lastErr: string | null = null; let json: any = null;
-      for(const base of bases){
-        // 최대 2회 (ping 실패 시 재시도 1회) -> strict → loose 순서
-        for(let attempt=0; attempt<2 && !json; attempt++){
-          try {
-            const ping = await fetch(base + '/lab/prompt-log/ping',{ method:'GET', cache:'no-store'});
-            if(!ping.ok) { if(attempt===1) throw new Error('ping '+ping.status); else { await new Promise(r=> setTimeout(r,400)); continue; } }
-            // STRICT 시도
-            const strictRes = await fetch(base + '/lab/prompt-log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: finalPrompt, bpm: state.bpm, mode: state.lengthMode }) });
-            let raw = await strictRes.text();
-            if(strictRes.ok){ json = raw? JSON.parse(raw):null; if(json?.ok) break; }
-            else if(strictRes.status===400 && /invalid_json|Bad escaped|Expected property/.test(raw)){
-              // LOOSE fallback
-              const looseRes = await fetch(base + '/lab/prompt-log/loose',{ method:'POST', headers:{'Content-Type':'text/plain'}, body: `${finalPrompt};${state.bpm};${state.lengthMode}` });
-              raw = await looseRes.text();
-              if(!looseRes.ok) throw new Error(`[${looseRes.status}] ${raw.slice(0,140)}`);
-              json = raw? JSON.parse(raw):null;
-              if(!json?.ok) throw new Error('loose no ok flag');
-            } else {
-              if(!strictRes.ok) throw new Error(`[${strictRes.status}] ${raw.slice(0,140)}`);
-            }
-          } catch(e:any){ lastErr = e.message; json = null; }
-        }
-        if(json?.ok) break;
-      }
-      if(!json?.ok) throw new Error(lastErr || 'all bases failed');
-      setServerHash(json.hash);
-      setServerFilenamePrefix(json.filenamePrefix);
-      setLoggedTs(json.record?.ts || new Date().toISOString());
-    } catch(e:any){ setLogError(e.message); }
+      const record = {
+        hash: promptHash,
+        ts: new Date().toISOString(),
+        bpm: state.bpm,
+        mode: state.lengthMode,
+        text: finalPrompt,
+        filenamePrefix
+      } as const;
+      const { updated } = upsertPrompt(record);
+      setServerHash(promptHash);
+      setServerFilenamePrefix(filenamePrefix);
+      setLoggedTs(record.ts);
+      setToast(updated? '로컬 큐 업데이트' : '로컬 큐 저장');
+    } catch(e:any){ setLogError(e.message || 'offline log 실패'); }
     finally { setLogging(false); }
+  }
+  function exportQueue(){
+    try {
+      const blob = new Blob([exportAsJsonl()], { type:'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `prompts-export-${new Date().toISOString().replace(/[:.]/g,'')}.jsonl`;
+      a.click();
+      setToast('Export 다운로드');
+    } catch(e:any){ setLogError(e.message); }
+  }
+  function clearLocalQueue(){
+    clearQueue();
+    setToast('큐 비움');
   }
 
   const toggleChip = (arr:string[], val:string)=> arr.includes(val)? arr.filter(v=> v!==val): [...arr,val];
@@ -441,10 +435,22 @@ export default function FunkNaturalPage(){
             {state.lengthMode==='short' && <button className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700" onClick={()=> copy(readable)}>Readable 보기/복사</button>}
             <button className="px-4 py-2 rounded-xl bg-neutral-700 border border-neutral-600" onClick={()=> copy(filenamePrefix)}>파일 Prefix 복사</button>
             <button className="px-4 py-2 rounded-xl bg-neutral-700 border border-neutral-600" onClick={()=> copy(colabSnippet)}>Colab 스니펫 복사</button>
-            <button disabled={logging} className={`px-4 py-2 rounded-xl ${serverFilenamePrefix? 'bg-emerald-600':'bg-fuchsia-600'} disabled:opacity-50`} onClick={logToServer}>{logging? '기록 중...' : serverFilenamePrefix? '서버 기록 완료 ✅' : '서버 기록 + Prefix 확정'}</button>
+            <button disabled={logging} className={`px-4 py-2 rounded-xl ${serverFilenamePrefix? 'bg-emerald-600':'bg-fuchsia-600'} disabled:opacity-50`} onClick={logOffline}>{logging? '저장 중...' : serverFilenamePrefix? '로컬 기록 완료 ✅' : '로컬 기록 (Offline)'}</button>
+            <button className="px-4 py-2 rounded-xl bg-neutral-700 border border-neutral-600" onClick={exportQueue}>Export (.jsonl)</button>
+            <button className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700" onClick={()=> setQueueOpen(o=> !o)}>큐 미리보기</button>
+            <button className="px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-700" onClick={clearLocalQueue}>큐 비우기</button>
           </div>
-          {serverFilenamePrefix && <div className="mt-2 text-xs text-emerald-400">Logged @ {new Date(loggedTs).toLocaleTimeString()} / hash {serverHash}</div>}
-          {logError && <div className="mt-2 text-xs text-red-400">로그 실패: {logError}</div>}
+          {serverFilenamePrefix && <div className="mt-2 text-xs text-emerald-400">Local @ {new Date(loggedTs).toLocaleTimeString()} / hash {serverHash}</div>}
+          {logError && <div className="mt-2 text-xs text-red-400">오류: {logError}</div>}
+          {queueOpen && <div className="mt-4 p-3 bg-neutral-900/60 border border-neutral-800 rounded-xl max-h-56 overflow-auto text-[11px] font-mono space-y-1">
+            {loadQueue().length===0 && <div className="opacity-50">(큐 비어 있음)</div>}
+            {loadQueue().slice().reverse().map(p=> <div key={p.hash} className="border-b border-neutral-800 pb-1 mb-1">
+              <div className="text-emerald-400">{p.hash}</div>
+              <div className="truncate">{p.text.slice(0,140)}</div>
+              <div className="opacity-50">{p.mode} · {p.bpm}bpm · {p.ts}</div>
+            </div>)}
+            <div className="sticky bottom-0 pt-1 text-right opacity-70">총 {queueStats().size} 개</div>
+          </div>}
           <div className="mt-6 grid md:grid-cols-3 gap-4 text-xs">
             <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-3 space-y-1">
               <div className="font-semibold">Hash</div>
