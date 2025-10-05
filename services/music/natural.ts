@@ -70,6 +70,7 @@ export interface FunkNaturalResult {
     originalLength: number; // 길이 압축 전 최초 길이
     compressionRatio: number; // finalLength / originalLength (0~1)
     warnings: string[]; // 품질 경고 (ex: low_diversity, truncated)
+    originalText: string; // 최초 조립 텍스트
   };
 }
 
@@ -119,6 +120,7 @@ export function buildFunkNaturalPrompt(input: FunkNLInput & { debug?: boolean })
   let parts = [head, evolve, groove, fxSent, mixSent, lengthSent].filter(Boolean);
   let text = joinParts(parts);
   stages.push({ label: 'initial', length: text.length });
+  const originalText = text;
   const originalLength = text.length;
 
   // 200자 가드: 제거 우선순위 = 길이문구 → 믹스 → FX → 악기 중간 항목 → 마지막 문장
@@ -175,6 +177,7 @@ export function buildFunkNaturalPrompt(input: FunkNLInput & { debug?: boolean })
       originalLength,
       compressionRatio,
       warnings,
+      originalText,
     };
   }
   return result;

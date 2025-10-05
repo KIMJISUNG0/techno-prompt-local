@@ -12,6 +12,30 @@ const UnifiedComposer = React.lazy(()=> import('./components/unified/UnifiedComp
 const FunkNaturalPage = React.lazy(()=> import('./components/FunkNaturalPage'));
 // SimpleComposer removed (deprecated simple mode)
 
+// Normalize hash to canonical leading slash variant (#/route instead of #route)
+(function normalizeInitialHash(){
+  try {
+    const h = window.location.hash;
+    if(!h){
+      // default entry route
+      window.location.hash = '/funk-natural';
+      return;
+    }
+    // convert #funk-natural -> #/funk-natural (and similar known simple tokens)
+    const simple = /^(#)(funk-natural|expert|abstract|unified|composer|live-test|stack|quick)$/;
+    if(simple.test(h)) {
+      window.location.hash = '/'+h.slice(1); // insert slash
+      return;
+    }
+    // legacy hash without leading slash but with params: #funk-natural?x= -> fix prefix
+    const legacyWithQuery = /^#(funk-natural|expert|abstract|unified|composer|live-test|stack|quick)([?&].*)$/;
+    if(legacyWithQuery.test(h)) {
+      window.location.hash = '/'+h.slice(1);
+      return;
+    }
+  } catch {/* ignore */}
+})();
+
 // Pre-parse hash for shareable genre selection (#g=genre1+genre2)
 (()=> {
   try {
@@ -54,13 +78,15 @@ function RootChooser() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
-  if (hash.includes('live-test')) return <TestPlayground />;
-  if (hash.includes('stack')) return <StackComposerWizard />; // experimental step-by-step layer composer
-  if (hash.includes('expert')) return <QuickComposer />; // expert (instrument/structure oriented)
-  if (hash.includes('abstract')) return <ProgressiveComposer />; // abstract token-based path
-  if (hash.includes('unified')) return <UnifiedComposer />; // new unified composer scaffold
-  if (hash.includes('funk-natural')) return <FunkNaturalPage />; // funk natural prompt page
-  if (hash.includes('quick')) return <QuickComposer />; // backward compat alias
+  // Accept both #route and #/route forms (already normalized early, but guard anyway)
+  const h = hash.replace(/^#(?!\/)/,'#/');
+  if (h.includes('live-test')) return <TestPlayground />;
+  if (h.includes('stack')) return <StackComposerWizard />;
+  if (h.includes('expert')) return <QuickComposer />;
+  if (h.includes('abstract')) return <ProgressiveComposer />;
+  if (h.includes('unified')) return <UnifiedComposer />;
+  if (h.includes('funk-natural')) return <FunkNaturalPage />;
+  if (h.includes('quick')) return <QuickComposer />;
   // Simple mode removed
   // Treat #composer as alias of #wizard (no difference in component for now)
   const [picked, setPicked] = React.useState<string[]|undefined>((window as any).__pickedGenres);
@@ -79,12 +105,12 @@ function AppShell() {
     <span className="text-slate-600">|</span>
     <div className="flex gap-2 items-center">
       <span className="text-slate-500">Mode:</span>
-  <a href="#expert" className="btn">Expert</a>
-  <a href="#abstract" className="btn">Abstract</a>
-  <a href="#unified" className="btn">Unified</a>
-  <a href="#funk-natural" className="btn">Funk Natural</a>
-  <a href="#composer" className="btn">Composer</a>
-  <a href="#live-test" className="btn">Live Test</a>
+  <a href="#/expert" className="btn">Expert</a>
+  <a href="#/abstract" className="btn">Abstract</a>
+  <a href="#/unified" className="btn">Unified</a>
+  <a href="#/funk-natural" className="btn">Funk Natural</a>
+  <a href="#/composer" className="btn">Composer</a>
+  <a href="#/live-test" className="btn">Live Test</a>
     </div>
         <div className="flex-1" />
         <div onClick={toggle} className="theme-toggle" data-mode={mode} role="button" aria-label="Toggle dark / light theme">
