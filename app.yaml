@@ -1,0 +1,28 @@
+# GCP App Engine 설정
+runtime: nodejs18
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 1
+  target_cpu_utilization: 0.6
+
+resources:
+  cpu: 1
+  memory_gb: 0.5
+  disk_size_gb: 10
+
+env_variables:
+  NODE_ENV: production
+  ORCH_ALLOW_NO_REDIS: "1"
+
+handlers:
+  # Static files (React build)
+  - url: /assets
+    static_dir: dist/assets
+    secure: always
+
+  # SPA routing - catch all
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always

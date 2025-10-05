@@ -26,5 +26,18 @@ export default [
       'no-empty': 'warn',
       '@typescript-eslint/ban-ts-comment': 'warn'
     }
+  },
+  {
+    files: ['scripts/**/*.js', 'orchestrator/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: { ...globals.node }
+    },
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-var-requires': 'off',
+      '@typescript-eslint/no-require-imports': 'off'
+    }
   }
 ];

@@ -1,15 +1,85 @@
 {
-  // Auto-approve only low-risk categories (edit/read). You requested full auto; set "*": true at your own risk.
+  // ---- Copilot Chat Command Auto-Approve (scoped) ----
   "github.copilot.chat.autoApproveCommands": {
     "^edit:.*": true,
     "^read:.*": true
   },
-  // To force full auto approval (NOT recommended) uncomment below:
-  // "github.copilot.chat.autoApproveCommands": { ".*": true }
+  // "github.copilot.chat.autoApproveCommands": { ".*": true } // <-- (위험) 전체 자동 승인
 
-  // Additional helpful safety nets
-  "files.trimTrailingWhitespace": true,
+  // ---- Formatting & Lint ----
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  }
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "eslint.useFlatConfig": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // ---- TypeScript / Imports ----
+  "typescript.tsserver.useSeparateSyntaxServer": true,
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+
+  // ---- Git / Collaboration ----
+  "git.confirmSync": false,
+  "git.autofetch": true,
+
+  // ---- UI / Readability ----
+  "workbench.iconTheme": "material-icon-theme",
+  "errorLens.enabled": true,
+  "explorer.compactFolders": false,
+
+  // ---- Spelling (Domain Words) ----
+  "cSpell.words": [
+    "techno",
+    "funkadelic",
+    "lufs",
+    "librosa",
+    "bpm",
+    "promptlog",
+    "orchestrator",
+    "fastify",
+    "openai",
+    "googleapis",
+    "ioredis",
+    "vitest",
+    "tsx"
+  ],
+
+  // ---- TailwindCSS ----
+  "tailwindCSS.includeLanguages": {
+    "typescript": "typescript",
+    "typescriptreact": "typescriptreact"
+  },
+  "tailwindCSS.experimental.classRegex": [
+    ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+    ["classnames\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+    ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+  ],
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+
+  // ---- Prettier ----
+  "prettier.requireConfig": true,
+  "eslint.format.enable": false,
+
+  // ---- Emmet ----
+  "emmet.includeLanguages": {
+    "typescript": "typescriptreact",
+    "javascript": "javascriptreact"
+  },
+
+  // ---- REST Client ----
+  "rest-client.requestTimeoutInMilliseconds": 15000,
+
+  // ---- Copilot Inline ----
+  "github.copilot.inlineSuggest.enable": true,
+  "github.copilot.editor.enableAutoCompletions": true,
+
+  // ---- Continue (Telemetry Off) ----
+  "continue.telemetryEnabled": false
 }

@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/
+
+# Auto-generated files
+*.d.ts
+
+# Screenshots and images (Korean filenames)
+screenshots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+
+# Memory and data files
+memory/
+analysis/
+
+# Config files that shouldn't be formatted
+*.min.js
+*.min.css
