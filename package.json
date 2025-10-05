@@ -33,6 +33,7 @@
     "dev:music:natural:smoke": "node -e \"fetch('http://localhost:4000/music/presets-natural').then(r=>r.json()).then(x=>console.log((x.items||[])[0]||'no presets'))\"",
   "music:smoke": "tsx scripts/music-smoke.ts",
   "prompt:log": "tsx scripts/log-prompt.ts",
+  "retro:log-rename": "tsx scripts/retro-log-rename.ts",
   "audio:analyze": "tsx scripts/analyze-audio.ts",
     "dev:worker:local": "tsx workers/local/worker.ts",
     "queue:demo": "tsx orchestrator/demo-enqueue.ts",
