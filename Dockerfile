@@ -1,27 +1,20 @@
-# Multi-stage build for React + TypeScript app
-FROM node:20-alpine AS builder
-
+# Multi-stage build Dockerfile (static front-end build + Nginx serve)
+# Stage 1: Build Vite app
+FROM node:20-alpine AS build
 WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy source code
+# Install deps (need dev deps for build)
+COPY package.json package-lock.json* ./
+RUN npm ci
+# Copy all sources
 COPY . .
-
-# Build the app
+# Build (produces dist/)
 RUN npm run build
 
-# Production stage
+# Stage 2: Minimal Nginx image to serve static assets
 FROM nginx:alpine
-
-# Copy built app to nginx
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
-
+# Copy build output
+COPY --from=build /app/dist /usr/share/nginx/html
+# Expose Cloud Run expected port
 EXPOSE 8080
-
-CMD ["nginx", "-g", "daemon off;"]
+# Adjust default nginx conf to listen on 8080
+CMD sh -c "sed -i 's/listen       80;/listen 8080;/' /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
