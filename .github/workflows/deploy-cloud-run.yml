@@ -1,0 +1,74 @@
+name: Deploy Suno Prompt Studio to Cloud Run (Proxy + SPA)
+
+on:
+  push:
+    branches:
+      - suno-standalone-export
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write   # For workload identity federation
+
+env:
+  SERVICE_NAME: techno-prompt
+  REGION: us-central1
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  # Optionally override IMAGE_NAME; else we derive from SERVICE_NAME
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: CI Quality (typecheck + lint + test + build)
+        run: npm run ci
+
+      - name: Auth to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_ID_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Configure gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build container image
+        run: |
+          IMAGE_NAME=${IMAGE_NAME:-$SERVICE_NAME}
+          IMAGE_URI=us-central1-docker.pkg.dev/$PROJECT_ID/app/$IMAGE_NAME:$(echo $GITHUB_SHA | head -c7)
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          docker build -t $IMAGE_URI .
+
+      - name: Push image
+        run: docker push $IMAGE_URI
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy $SERVICE_NAME \
+            --image $IMAGE_URI \
+            --platform managed \
+            --region $REGION \
+            --allow-unauthenticated \
+            --quiet \
+            --set-env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},ACCESS_TOKEN=${{ secrets.SPS_ACCESS_TOKEN }},CORS_ORIGINS=${{ vars.SPS_CORS_ORIGINS || '*' }}
+
+      - name: Show Service URL
+        run: gcloud run services describe $SERVICE_NAME --region $REGION --format='value(status.url)'
