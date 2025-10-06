@@ -65,8 +65,8 @@
     "gcp:status": "gcloud run services describe techno-prompt --region=us-central1 --format='value(status.url)'",
     "gcp:music:init": "tsx scripts/gcp/music-firestore.ts",
     "gcp:music:analyze": "tsx scripts/gcp/music-vertex-ai.ts",
-    "gcp:usage:report": "tsx scripts/gcp/usage-monitor.ts"
-    ,"gpt:context": "powershell -ExecutionPolicy Bypass -File scripts/make-gpt-context.ps1"
+    "gcp:usage:report": "tsx scripts/gcp/usage-monitor.ts",
+    "gpt:context": "powershell -ExecutionPolicy Bypass -File scripts/make-gpt-context.ps1"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

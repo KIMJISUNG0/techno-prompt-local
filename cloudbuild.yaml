@@ -1,21 +1,55 @@
 steps:
-  # Install dependencies
-  - name: 'node:18'
-    entrypoint: 'npm'
-    args: ['ci']
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '-t',
+        'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/techno-prompt:$BUILD_ID',
+        '-t',
+        'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/techno-prompt:latest',
+        '.',
+      ]
 
-  # Run CI checks (lint, test, build)
-  - name: 'node:18'
-    entrypoint: 'npm'
-    args: ['run', 'ci']
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/techno-prompt:$BUILD_ID']
 
-  # Deploy to App Engine
-  - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['app', 'deploy', '--quiet']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/techno-prompt:latest']
 
-# Trigger on main branch
-substitutions:
-  _DEPLOY_REGION: 'asia-northeast1'
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      [
+        'run',
+        'deploy',
+        'techno-prompt',
+        '--image',
+        'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/techno-prompt:$BUILD_ID',
+        '--region',
+        'us-central1',
+        '--platform',
+        'managed',
+        '--allow-unauthenticated',
+        '--port',
+        '8080',
+        '--memory',
+        '512Mi',
+        '--cpu',
+        '1',
+        '--min-instances',
+        '0',
+        '--max-instances',
+        '10',
+        '--quiet',
+      ]
+
+# Images to be stored in Artifact Registry
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/techno-prompt:$BUILD_ID'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/techno-prompt:latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY

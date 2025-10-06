@@ -1,5 +1,5 @@
 # GCP App Engine 설정
-runtime: nodejs18
+runtime: nodejs20
 
 automatic_scaling:
   min_instances: 0
@@ -13,7 +13,7 @@ resources:
 
 env_variables:
   NODE_ENV: production
-  ORCH_ALLOW_NO_REDIS: "1"
+  ORCH_ALLOW_NO_REDIS: '1'
 
 handlers:
   # Static files (React build)

@@ -1,7 +1,7 @@
 /**
  * 음악 분석 특화 Firestore 스키마 및 초기 데이터 설정
  */
-import { Firestore, FieldValue } from '@google-cloud/firestore';
+import { FieldValue, Firestore } from '@google-cloud/firestore';
 
 export interface MusicAnalysisSchema {
   // 음악 분석 결과
@@ -136,7 +136,7 @@ export class MusicFirestoreManager {
     ];
 
     const batch = this.db.batch();
-    
+
     for (const pattern of defaultPatterns) {
       const ref = this.db.collection('patterns').doc(pattern.id);
       batch.set(ref, pattern);
@@ -158,7 +158,7 @@ export class MusicFirestoreManager {
         createdAt: new Date(),
       },
     });
-    
+
     // eslint-disable-next-line no-console
     console.log(`✅ 분석 결과 저장: ${ref.id}`);
     return ref.id;
@@ -179,7 +179,7 @@ export class MusicFirestoreManager {
    */
   async getPopularPatterns(genre?: string, limit = 10) {
     let query = this.db.collection('patterns').orderBy('metadata.difficulty').limit(limit);
-    
+
     if (genre) {
       query = query.where('genre', '==', genre);
     }
@@ -212,9 +212,12 @@ export const musicDb = new MusicFirestoreManager(process.env.GCP_PROJECT_ID);
 
 // 초기화 스크립트 (한 번만 실행)
 if (require.main === module) {
-  musicDb.initializeMusicPatterns().then(() => {
-    // eslint-disable-next-line no-console
-    console.log('🎉 음악 데이터베이스 초기화 완료!');
-    process.exit(0);
-  }).catch(console.error);
+  musicDb
+    .initializeMusicPatterns()
+    .then(() => {
+      // eslint-disable-next-line no-console
+      console.log('🎉 음악 데이터베이스 초기화 완료!');
+      process.exit(0);
+    })
+    .catch(console.error);
 }

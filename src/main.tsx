@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
-const MultiGenrePromptWizard = React.lazy(() => import('./components/wizard/MultiGenrePromptWizard'));
-const StackComposerWizard = React.lazy(() => import('./components/wizard/StackComposerWizard'));
 import GenrePortal from './components/portal/GenrePortal';
 import TestPlayground from './components/TestPlayground';
+import './index.css';
 import './live/techno140Demo'; // registers techno140 patch
+const MultiGenrePromptWizard = React.lazy(() => import('./components/wizard/MultiGenrePromptWizard'));
+const StackComposerWizard = React.lazy(() => import('./components/wizard/StackComposerWizard'));
 const QuickComposer = React.lazy(() => import('./components/QuickComposer'));
 const ProgressiveComposer = React.lazy(() => import('./components/ProgressiveComposer'));
 const UnifiedComposer = React.lazy(() => import('./components/unified/UnifiedComposer'));

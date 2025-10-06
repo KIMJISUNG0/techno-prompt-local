@@ -2,8 +2,8 @@
  * GCP + Colab 통합 유틸리티
  * 코랩에서 분석 결과를 Cloud Storage에 저장하고 앱에서 활용
  */
-import { Storage } from '@google-cloud/storage';
 import { Firestore } from '@google-cloud/firestore';
+import { Storage } from '@google-cloud/storage';
 
 export interface ColabAnalysisResult {
   timestamp: string;
@@ -22,10 +22,7 @@ export class GCPColabBridge {
   private firestore: Firestore;
   private bucketName: string;
 
-  constructor(options: {
-    bucketName: string;
-    projectId?: string;
-  }) {
+  constructor(options: { bucketName: string; projectId?: string }) {
     this.bucketName = options.bucketName;
     this.storage = new Storage({
       projectId: options.projectId,
@@ -40,7 +37,7 @@ export class GCPColabBridge {
    */
   async uploadAnalysisResult(result: ColabAnalysisResult): Promise<string> {
     const fileName = `analysis/${result.analysisType}/${result.timestamp}-${result.metadata.colabSessionId}.json`;
-    
+
     const file = this.storage.bucket(this.bucketName).file(fileName);
     await file.save(JSON.stringify(result, null, 2), {
       metadata: {
@@ -53,16 +50,13 @@ export class GCPColabBridge {
     });
 
     // Firestore에 메타데이터 저장 (빠른 조회용)
-    await this.firestore
-      .collection('colab_analyses')
-      .doc(`${result.timestamp}-${result.metadata.colabSessionId}`)
-      .set({
-        fileName,
-        analysisType: result.analysisType,
-        timestamp: result.timestamp,
-        processingTimeMs: result.metadata.processingTimeMs,
-        createdAt: new Date(),
-      });
+    await this.firestore.collection('colab_analyses').doc(`${result.timestamp}-${result.metadata.colabSessionId}`).set({
+      fileName,
+      analysisType: result.analysisType,
+      timestamp: result.timestamp,
+      processingTimeMs: result.metadata.processingTimeMs,
+      createdAt: new Date(),
+    });
 
     return fileName;
   }
@@ -70,14 +64,8 @@ export class GCPColabBridge {
   /**
    * 최근 분석 결과 조회 (앱에서 사용)
    */
-  async getRecentAnalyses(
-    type?: string,
-    limit: number = 10
-  ): Promise<ColabAnalysisResult[]> {
-    let query = this.firestore
-      .collection('colab_analyses')
-      .orderBy('createdAt', 'desc')
-      .limit(limit);
+  async getRecentAnalyses(type?: string, limit: number = 10): Promise<ColabAnalysisResult[]> {
+    let query = this.firestore.collection('colab_analyses').orderBy('createdAt', 'desc').limit(limit);
 
     if (type) {
       query = query.where('analysisType', '==', type);
@@ -117,7 +105,7 @@ BUCKET_NAME = "${this.bucketName}"
 
 def upload_analysis_result(analysis_type, input_data, results):
     """분석 결과를 GCP에 업로드"""
-    
+
     # 결과 구조화
     result = {
         "timestamp": datetime.now().isoformat(),
@@ -130,18 +118,18 @@ def upload_analysis_result(analysis_type, input_data, results):
             "modelUsed": "colab-analysis"
         }
     }
-    
+
     # Cloud Storage 업로드
     client = storage.Client(project=PROJECT_ID)
     bucket = client.bucket(BUCKET_NAME)
-    
+
     file_name = f"analysis/{analysis_type}/{result['timestamp']}-{result['metadata']['colabSessionId']}.json"
     blob = bucket.blob(file_name)
     blob.upload_from_string(
         json.dumps(result, indent=2),
         content_type='application/json'
     )
-    
+
     # Firestore 메타데이터 저장
     db = firestore.Client(project=PROJECT_ID)
     db.collection('colab_analyses').document(
@@ -153,7 +141,7 @@ def upload_analysis_result(analysis_type, input_data, results):
         'processingTimeMs': result['metadata']['processingTimeMs'],
         'createdAt': firestore.SERVER_TIMESTAMP
     })
-    
+
     print(f"✅ Analysis uploaded: {file_name}")
     return file_name
 

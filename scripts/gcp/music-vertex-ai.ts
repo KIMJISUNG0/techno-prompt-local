@@ -32,14 +32,14 @@ export class VertexAIMusicAnalyzer {
    */
   async analyzeBPM(audioFile: string): Promise<{ bpm: number; confidence: number }> {
     const startTime = Date.now();
-    
+
     try {
       // 1. 오디오 파일 다운로드 (처음 30초만)
       const audioData = await this.getAudioSample(audioFile, 30);
-      
+
       // 2. 간단한 BPM 분석 (Vertex AI 대신 로컬 처리로 비용 절약)
       const bpm = await this.detectBPMLocal(audioData);
-      
+
       // 3. 결과 저장
       await musicDb.saveAnalysis({
         type: 'bpm',
@@ -66,15 +66,17 @@ export class VertexAIMusicAnalyzer {
   /**
    * 장르 분류 (Vertex AI AutoML 활용)
    */
-  async analyzeGenre(audioFile: string): Promise<{ genre: string; confidence: number; alternatives: Array<{ genre: string; confidence: number }> }> {
+  async analyzeGenre(
+    audioFile: string
+  ): Promise<{ genre: string; confidence: number; alternatives: Array<{ genre: string; confidence: number }> }> {
     const startTime = Date.now();
-    
+
     try {
       // Mock 분석 (실제 Vertex AI 모델 학습 후 교체)
       const genres = ['techno', 'house', 'trance', 'progressive', 'minimal'];
       const primaryGenre = genres[Math.floor(Math.random() * genres.length)];
       const confidence = 0.7 + Math.random() * 0.3;
-      
+
       const alternatives = genres
         .filter(g => g !== primaryGenre)
         .slice(0, 2)
@@ -107,11 +109,16 @@ export class VertexAIMusicAnalyzer {
    * 음악 구조 분석 (섹션 분할)
    */
   async analyzeStructure(audioFile: string): Promise<{
-    sections: Array<{ start: number; end: number; type: 'intro' | 'verse' | 'chorus' | 'bridge' | 'outro'; confidence: number }>;
+    sections: Array<{
+      start: number;
+      end: number;
+      type: 'intro' | 'verse' | 'chorus' | 'bridge' | 'outro';
+      confidence: number;
+    }>;
     duration: number;
   }> {
     const startTime = Date.now();
-    
+
     try {
       // Mock 구조 분석 (실제로는 스펙트럼 분석 + 패턴 매칭)
       const duration = 240; // 4분 가정
@@ -186,7 +193,7 @@ export class VertexAIMusicAnalyzer {
   private async getAudioSample(audioFile: string, maxSeconds: number): Promise<Buffer> {
     const bucket = this.storage.bucket(process.env.GCP_STORAGE_BUCKET!);
     const file = bucket.file(audioFile);
-    
+
     // 실제로는 ffmpeg 등을 사용해 처음 N초만 추출
     const [buffer] = await file.download();
     return buffer.slice(0, Math.min(buffer.length, maxSeconds * 44100 * 2)); // 대략적인 크기 제한
@@ -204,9 +211,7 @@ export class VertexAIMusicAnalyzer {
 }
 
 // 환경 변수 기반 인스턴스
-export const musicAnalyzer = new VertexAIMusicAnalyzer(
-  process.env.GCP_PROJECT_ID || 'techno-prompt-project'
-);
+export const musicAnalyzer = new VertexAIMusicAnalyzer(process.env.GCP_PROJECT_ID || 'techno-prompt-project');
 
 // CLI 실행 (테스트용)
 if (require.main === module) {
@@ -216,8 +221,11 @@ if (require.main === module) {
     process.exit(1);
   }
 
-  musicAnalyzer.analyzeComplete(audioFile).then(result => {
-    // eslint-disable-next-line no-console
-    console.log('🎵 음악 분석 완료:', JSON.stringify(result, null, 2));
-  }).catch(console.error);
+  musicAnalyzer
+    .analyzeComplete(audioFile)
+    .then(result => {
+      // eslint-disable-next-line no-console
+      console.log('🎵 음악 분석 완료:', JSON.stringify(result, null, 2));
+    })
+    .catch(console.error);
 }

@@ -84,14 +84,16 @@ export class GCPUsageMonitor {
   /**
    * 무료 한도 경고 확인
    */
-  async checkFreeQuotaWarnings(): Promise<Array<{
-    service: string;
-    usage: number;
-    limit: number;
-    percentage: number;
-    severity: 'info' | 'warning' | 'critical';
-    recommendation: string;
-  }>> {
+  async checkFreeQuotaWarnings(): Promise<
+    Array<{
+      service: string;
+      usage: number;
+      limit: number;
+      percentage: number;
+      severity: 'info' | 'warning' | 'critical';
+      recommendation: string;
+    }>
+  > {
     const usage = await this.getCurrentUsage();
     const warnings = [];
 
@@ -103,7 +105,7 @@ export class GCPUsageMonitor {
         usage: usage.cloudRun.requests,
         limit: usage.cloudRun.maxFreeRequests,
         percentage: runRequestsPercent,
-        severity: runRequestsPercent > 95 ? 'critical' as const : 'warning' as const,
+        severity: runRequestsPercent > 95 ? ('critical' as const) : ('warning' as const),
         recommendation: 'API 호출 최적화 또는 캐싱 구현 고려',
       });
     }
@@ -116,7 +118,7 @@ export class GCPUsageMonitor {
         usage: usage.cloudStorage.storageGB,
         limit: usage.cloudStorage.maxFreeStorage,
         percentage: storagePercent,
-        severity: storagePercent > 90 ? 'critical' as const : 'warning' as const,
+        severity: storagePercent > 90 ? ('critical' as const) : ('warning' as const),
         recommendation: '오래된 분석 결과 삭제 또는 압축 저장',
       });
     }
@@ -129,7 +131,7 @@ export class GCPUsageMonitor {
         usage: usage.firestore.reads,
         limit: usage.firestore.maxFreeReads,
         percentage: firestoreReadsPercent,
-        severity: firestoreReadsPercent > 90 ? 'critical' as const : 'warning' as const,
+        severity: firestoreReadsPercent > 90 ? ('critical' as const) : ('warning' as const),
         recommendation: '쿼리 최적화 또는 로컬 캐싱 구현',
       });
     }
@@ -140,12 +142,14 @@ export class GCPUsageMonitor {
   /**
    * 비용 최적화 제안
    */
-  async getCostOptimizationTips(): Promise<Array<{
-    category: string;
-    tip: string;
-    estimatedSavings: string;
-    priority: 'high' | 'medium' | 'low';
-  }>> {
+  async getCostOptimizationTips(): Promise<
+    Array<{
+      category: string;
+      tip: string;
+      estimatedSavings: string;
+      priority: 'high' | 'medium' | 'low';
+    }>
+  > {
     const usage = await this.getCurrentUsage();
     const tips = [];
 
@@ -250,14 +254,15 @@ export class GCPUsageMonitor {
 }
 
 // 환경 변수 기반 인스턴스
-export const usageMonitor = new GCPUsageMonitor(
-  process.env.GCP_PROJECT_ID || 'techno-prompt-project'
-);
+export const usageMonitor = new GCPUsageMonitor(process.env.GCP_PROJECT_ID || 'techno-prompt-project');
 
 // CLI 실행 (사용량 리포트)
 if (require.main === module) {
-  usageMonitor.generateUsageReport().then(report => {
-    // eslint-disable-next-line no-console
-    console.log('📊 GCP 사용량 리포트:', JSON.stringify(report, null, 2));
-  }).catch(console.error);
+  usageMonitor
+    .generateUsageReport()
+    .then(report => {
+      // eslint-disable-next-line no-console
+      console.log('📊 GCP 사용량 리포트:', JSON.stringify(report, null, 2));
+    })
+    .catch(console.error);
 }
