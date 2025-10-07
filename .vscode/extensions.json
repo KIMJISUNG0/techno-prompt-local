@@ -1,0 +1,41 @@
+// VS Code Recommended Extensions
+// Categorized for Copilot synergy & project needs
+{
+  "recommendations": [
+    // --- AI Core ---
+    "github.copilot",
+    "github.copilot-chat",
+    "continue.continue",
+    "DanielSanMedium.dscodegpt",
+    "cline.claude-dev",
+    "googlecloudtools.cloudcode",
+
+    // --- Code Quality & Formatting ---
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "EditorConfig.EditorConfig",
+    "usernamehw.errorlens",
+    "streetsidesoftware.code-spell-checker",
+
+    // --- Frontend / Styling ---
+    "bradlc.vscode-tailwindcss",
+    "formulahendry.auto-close-tag",
+    "PKief.material-icon-theme",
+
+    // --- Environment & Infra ---
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-wsl",
+    "ms-vscode-remote.remote-containers",
+    "redhat.vscode-yaml",
+    "ms-vscode.powershell",
+
+    // --- Git & Collaboration ---
+    "eamodio.gitlens",
+    "GitHub.vscode-pull-request-github",
+
+    // --- Utilities ---
+    "humao.rest-client",
+    "foxundermoon.shell-format",
+    "ritwickdey.LiveServer"
+  ]
+}

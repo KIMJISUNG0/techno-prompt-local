@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../screenshots"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "techno-prompt-main"
+	}
+}
