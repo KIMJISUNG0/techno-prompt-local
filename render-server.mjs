@@ -24,6 +24,7 @@ if (!GEMINI_API_KEY) {
   console.error('[startup] Missing GEMINI_API_KEY env');
 }
 const GEMINI_MODEL = (process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim();
+const MODEL_FALLBACKS = (process.env.GEMINI_MODEL_FALLBACKS || 'gemini-1.5-flash-latest,gemini-1.5-flash,gemini-1.5-pro-latest,gemini-1.5-pro,gemini-1.5-flash-8b-latest,gemini-2.0-flash,gemini-2.0-flash-exp').split(',').map(s => s.trim()).filter(Boolean);
 const DEBUG_ERRORS = (process.env.DEBUG_ERRORS === '1' || process.env.DEBUG_ERRORS === 'true');
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN || '';
 
@@ -89,13 +90,38 @@ fastify.post('/api/gemini', async (req, reply) => {
       reply.code(400).send({ error: 'Missing prompt' });
       return;
     }
-    const modelName = (body.model || GEMINI_MODEL).trim();
+    const requested = (body.model || GEMINI_MODEL).trim();
+    const tried = new Set();
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: modelName });
-    // Library supports generateContent(string) or array of parts.
-    const result = await model.generateContent(promptText);
-    const text = result?.response?.text?.() || result?.response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    reply.send({ text, model: modelName, ms: Date.now() - started });
+
+    async function tryModel(name) {
+      tried.add(name);
+      const model = genAI.getGenerativeModel({ model: name });
+      return model.generateContent(promptText);
+    }
+
+    const ordered = [requested, ...MODEL_FALLBACKS.filter(m => m !== requested)];
+    let finalResult = null; let finalModel = null; let lastErr = null;
+    for (const mName of ordered) {
+      try {
+        const r = await tryModel(mName);
+        finalResult = r; finalModel = mName; break;
+      } catch (e) {
+        lastErr = e;
+        const msg = (e.message || '').toLowerCase();
+        // only continue fallback on 404/model not found style errors
+        if (e.status === 404 || msg.includes('not found') || msg.includes('is not supported')) {
+          continue; // try next
+        } else {
+          throw e; // different error, abort fallback early
+        }
+      }
+    }
+    if (!finalResult) {
+      throw lastErr || new Error('All model fallbacks failed');
+    }
+    const text = finalResult?.response?.text?.() || finalResult?.response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    reply.send({ text, model: finalModel, ms: Date.now() - started, tried: Array.from(tried) });
   } catch (err) {
     const statusLike = err.status || err.code || err.response?.status;
     let rawMsg = err.message || String(err);
@@ -112,7 +138,7 @@ fastify.post('/api/gemini', async (req, reply) => {
     }
     if (String(sanitized).toLowerCase().includes('permission') || statusLike === 403) payload.hint = 'Check if model name is allowed for your key or enable in AI Studio.';
     if (String(sanitized).toLowerCase().includes('api key') || statusLike === 401) payload.hint = 'Invalid or restricted API key. Ensure you created a Generative Language API key, not an OAuth client.';
-    if (String(sanitized).toLowerCase().includes('model') && String(sanitized).toLowerCase().includes('not found')) payload.hint = 'Model name may be incorrect. Try gemini-1.5-flash, gemini-1.5-pro, gemini-2.0-flash-exp, gemini-2.0-flash, etc.';
+    if (String(sanitized).toLowerCase().includes('model') && String(sanitized).toLowerCase().includes('not found')) payload.hint = 'Model name may be incorrect. Try gemini-1.5-flash-latest, gemini-1.5-pro-latest, gemini-1.5-flash-8b-latest, gemini-2.0-flash, gemini-2.0-flash-exp.';
     reply.code(500).send(payload);
   }
 });
